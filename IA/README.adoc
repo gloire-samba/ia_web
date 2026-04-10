@@ -1,0 +1,52 @@
+= 🧠 Le Cerveau IA (Back-end Python / FastAPI)
+:toc: macro
+:toc-title: Sommaire
+:sectnums:
+
+toc::[]
+
+
+link:../README.adoc[⬅️ Retour à la racine du projet]
+
+== 📖 Présentation
+Ce dossier contient le cœur analytique de l'application : un Agent IA autonome exposé sous forme d'API REST grâce à `FastAPI`. 
+
+Historiquement basé sur des modèles Hugging Face purs, ce module a été entièrement réécrit pour utiliser la bibliothèque `smolagents` couplée à **Google Gemini 2.5 Flash**. Cette architecture permet à l'IA d'avoir d'excellentes capacités de raisonnement, de manipuler des fichiers bureautiques complexes, de chercher sur le web et "d'observer" des images.
+
+== ⚙️ Architecture & Modèles
+* **LLM Principal** : `gemini/gemini-2.5-flash` (via l'interface LiteLLM).
+* **Système de Mémoire (Embeddings / RAG)** : L'IA convertit les documents fournis en vecteurs pour les lire efficacement. Ce système intègre une redondance pour éviter les pannes :
+  ** *Plan A (Google)* : Utilise `text-embedding-004` (rapide et précis).
+  ** *Plan B (Fallback local)* : Si Google est inaccessible, le serveur bascule automatiquement sur un modèle local `HuggingFace` (`all-MiniLM-L6-v2`).
+* **Serveur / Infrastructure** : Uvicorn + FastAPI, pensé spécifiquement pour être déployé sous forme de conteneur **Docker** sur un Space Hugging Face.
+
+== 🛠️ Les Outils de l'Agent (Tools)
+L'agent est équipé d'outils Python qu'il sélectionne et invoque de manière autonome selon la demande de l'utilisateur :
+* `outil_rag` : Recherche des informations ciblées dans les documents fournis.
+* `convertisseur_pdf_vers_editable` : Utilise `LibreOffice` en mode "headless" pour transformer un PDF en document `.docx` ou `.xlsx`.
+* `convertisseur_editable_vers_pdf` : Transforme un fichier éditable (Word, Excel, PPT) finalisé en PDF.
+* `modificateur_docx` : Lit, comprend et modifie le contenu d'un document Word existant.
+* `modificateur_xlsx` : Interagit avec les cellules et les feuilles d'un classeur Excel.
+* `modificateur_ppt` : Traite les présentations PowerPoint (vide une diapositive cible et y injecte du nouveau texte et des images).
+* `recherche_web` : Moteur de recherche DuckDuckGo intégré pour vérifier des faits en temps réel.
+
+== 🔑 Prérequis, Clés API & Déploiement
+Pour éviter les répétitions et centraliser la configuration, toutes les étapes de déploiement sont expliquées à la racine du projet.
+
+* Vous trouverez ici le lien qui explique comment récupérer les clés API de Google :
+link:../README.adoc#étape-1--obtenir-la-clé-google-moteur-ia[🔑 Étape 1 : Obtenir la clé Google]
+
+* Vous trouverez ici le lien qui explique comment récupérer le jeton Hugging Face :
+link:../README.adoc#étape-2--obtenir-le-jeton-hugging-face-modèle-de-mémoire[🤗 Étape 2 : Obtenir le jeton Hugging Face]
+
+* Vous trouverez ici le lien qui explique comment déployer le cerveau de l'IA (et où placer vos clés) :
+link:../README.adoc#étape-3--déployer-lia-et-placer-les-clés[🚀 Étape 3 : Déployer le Cerveau IA]
+
+== ⚠️ Avertissement : Limites et Quotas Gratuits
+Ce projet repose sur des API puissantes mais dans leurs versions gratuites. Vous partagez donc la puissance de calcul avec le reste de la planète.
+* **Erreur 503 (High Demand) / 429 (Quota)** : En cas de pic d'utilisation mondial, Google peut bloquer temporairement vos requêtes. Ce n'est pas un bug du code, mais une limitation du serveur de Google.
+* **Le traitement des images** : Demander à l'IA d'analyser une image demande énormément de ressources. Si les serveurs de Google sont très sollicités, les requêtes textuelles simples (ex: "Quelle est la capitale de la France ?") passeront, mais l'envoi d'images sera souvent refusé (Erreur 503).
+* _Solution_ : Réessayer quelques minutes plus tard, aux heures creuses, ou lier une carte bancaire sur Google Cloud pour débloquer les limites de la version gratuite.
+
+---
+link:../README.adoc[⬅️ Retour à la racine du projet]

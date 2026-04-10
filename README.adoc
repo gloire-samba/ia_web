@@ -1,0 +1,120 @@
+= 🚀 Projet Web IA : Assistant Bureautique Intelligent
+:toc: macro
+:toc-title: Sommaire
+:sectnums:
+
+toc::[]
+
+== 📖 Présentation du Projet
+Ce projet est une application web complète intégrant une Intelligence Artificielle générative (basée sur Gemini 2.5 Flash) capable de converser, de rechercher sur le web et de manipuler des documents bureautiques complexes (Word, Excel, PowerPoint, PDF).
+
+L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement l'interface utilisateur, les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
+
+=== Prérequis
+Pour exécuter ce projet localement, votre environnement doit disposer de :
+* Node.js (v22+) et Angular CLI (v19+)
+* Java JDK 21 (Assurez-vous que votre variable `JAVA_HOME` pointe vers la version 21)
+* Python 3.12 ou supérieur
+* **Docker Desktop** (Fortement recommandé pour le déploiement automatisé)
+
+== 🏗️ Architecture et Composants
+Le projet est divisé en 4 modules indépendants orchestrés par Docker.
+*Cliquez sur les liens pour accéder à la documentation détaillée de chaque module.*
+
+* 🎨 link:FRONT/README.adoc[**FRONT (Angular)**] : L'interface graphique de chat, permettant d'envoyer des instructions et des fichiers.
+* ☕ link:BackSpring/README.adoc[**BackSpring (Java / Spring Boot)**] : Le premier serveur relais (Port 8080).
+* 🎸 link:BackDjango/README.adoc[**BackDjango (Python / Django)**] : Le second serveur relais (Port 8000).
+* 🧠 link:IA/README.adoc[**IA (Python / FastAPI)**] : Le code du cerveau IA, destiné à être hébergé sur Hugging Face.
+* 🐳 **`docker-compose.yml`** : Le chef d'orchestre. Ce fichier permet de démarrer l'interface et les deux relais simultanément dans des conteneurs isolés avec une seule commande.
+
+== 🔑 Prérequis Absolus : Clés API et Configuration
+L'application ne peut pas fonctionner sans son "cerveau".
+Pour des raisons de sécurité et de quotas, le code source ne contient pas de clés publiques. Vous devez générer les vôtres et déployer votre propre instance IA.
+
+=== Étape 1 : Obtenir la clé Google (Moteur IA)
+. Allez sur https://aistudio.google.com/[Google AI Studio] et connectez-vous.
+. Cliquez sur **Create API key** et copiez la clé générée (`AIza...`).
+
+=== Étape 2 : Obtenir le jeton Hugging Face (Modèle de mémoire)
+. Créez un compte sur https://huggingface.co/[Hugging Face].
+. Allez dans **Settings** > **Access Tokens**.
+. Cliquez sur **Create new token** (Type : **Read**) et copiez le jeton (`hf_...`).
+
+=== Étape 3 : Déployer l'IA et placer les clés
+. Créez un **Space (Docker)** sur Hugging Face et téléversez-y le contenu du dossier `IA/`.
+. Dans l'onglet **Settings** > **Variables and secrets** de votre Space, ajoutez vos clés :
+  * Name: `GOOGLE_API_KEY` | Value: _Votre clé Google_
+  * Name: `HF_TOKEN` | Value: _Votre jeton Hugging Face_
+. Faites un **Factory Rebuild**.
+Votre IA est en ligne ! Copiez l'URL de votre Space (ex: `https://votre-pseudo-space.hf.space/api/chat`).
+
+=== Étape 4 : Connecter les Relais à votre IA
+Vous devez indiquer à Spring Boot et Django où trouver votre IA.
+* **Pour Spring Boot :** Ouvrez `BackSpring/backspring/src/main/resources/application.properties` et modifiez la ligne :
+  `python.api.url=VOTRE_URL_HUGGING_FACE`
+* **Pour Django :** Ouvrez `BackDjango/backdjango/settings.py` et modifiez la ligne à la fin du fichier :
+  `PYTHON_API_URL = "VOTRE_URL_HUGGING_FACE"`
+
+---
+
+== 🚀 Guide de Lancement et d'Arrêt Global
+
+Vous avez deux possibilités pour lancer ce projet : la méthode automatisée (via Docker) ou la méthode manuelle.
+
+=== Méthode 1 : Lancement avec Docker (Recommandé 🌟)
+C'est la méthode la plus simple et la plus robuste. Elle garantit que l'application fonctionnera avec les bonnes versions des langages sans rien polluer sur votre machine. **Avantage majeur : les deux serveurs relais tournent en parallèle !**
+
+**Démarrer l'application :**
+. Ouvrez un terminal à la racine absolue du projet.
+. Lancez la commande suivante (ajoutez `sudo` sous Linux si nécessaire) :
++
+[source,bash]
+----
+docker compose up --build
+----
+. L'application est disponible sur **http://localhost:4200**. 
+_Grâce à Docker, Spring Boot et Django sont allumés simultanément en arrière-plan. Vous pouvez basculer de l'un à l'autre en temps réel via les boutons de l'interface graphique !_
+
+**Arrêter l'application :**
+. Allez dans le terminal où défilent les logs.
+. Appuyez sur **`Ctrl + C`** pour éteindre tous les serveurs en douceur, ou tapez la commande `docker compose down` dans un autre terminal.
+
+---
+
+=== Méthode 2 : Lancement Manuel (Développement)
+Si vous souhaitez modifier le code et voir les changements en temps réel sans recompiler les conteneurs Docker, vous devez lancer les modules individuellement.
+
+⚠️ **Règle d'or de la méthode manuelle :** N'allumez qu'**UN SEUL** serveur relais à la fois pour éviter les conflits réseau et la surcharge mémoire.
+
+**1. Lancer l'Interface (Front-end)**
+Ouvrez un premier terminal :
+[source,bash]
+----
+cd FRONT/votre-dossier-angular
+npm install   # La première fois uniquement
+ng serve
+----
+_L'interface est disponible sur http://localhost:4200._
+
+**2. Lancer un Serveur Relais (Choisissez votre Back-end)**
+Ouvrez un *second* terminal et choisissez le moteur de votre choix. Dans l'interface Angular, assurez-vous de sélectionner le bouton correspondant au serveur que vous venez d'allumer !
+
+**Option A : Lancer Spring Boot (Java)**
+[source,bash]
+----
+cd BackSpring/backspring
+./mvnw spring-boot:run
+----
+
+**Option B : Lancer Django (Python)**
+[source,bash]
+----
+cd BackDjango/votre-dossier-django
+source venv/bin/activate  # Ou venv\Scripts\activate sur Windows
+pip install -r requirements.txt # La première fois uniquement
+python manage.py runserver
+----
+
+**Arrêter et changer de relais manuellement :**
+* Appuyez sur **`Ctrl + C`** dans le terminal du serveur en cours d'exécution.
+* _Exemple : Pour passer de Spring à Django, coupez le terminal Spring, puis ouvrez le dossier Django et lancez la commande de démarrage Python._

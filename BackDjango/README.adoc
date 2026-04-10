@@ -1,0 +1,103 @@
+= 🎸 Serveur Relais Python (Django)
+:toc: macro
+:toc-title: Sommaire
+:sectnums:
+
+toc::[]
+
+link:../README.adoc[⬅️ Retour à la racine du projet]
+
+== 📖 Objectif du module
+Ce dossier contient le second serveur back-end optionnel : le **Relais Django**.
+Tout comme son homologue Java (Spring Boot), son rôle est de faire l'intermédiaire sécurisé entre l'interface utilisateur (Angular) et le cerveau IA (Hugging Face).
+Avoir deux relais différents prouve la flexibilité de l'architecture : l'application Front-end peut basculer de l'un à l'autre de manière transparente, démontrant la capacité à intégrer des technologies variées (Java ou Python) dans un même écosystème.
+
+== 🏗️ Fichiers clés et Architecture
+Le projet utilise la structure standard de Django, axée sur les vues et le routage, mais a été enrichi pour la conteneurisation :
+
+* `manage.py` : L'outil en ligne de commande de Django, utilisé pour démarrer le serveur ou exécuter les migrations.
+* `backdjango/settings.py` : Le fichier de configuration principal. C'est ici que l'on autorise le Front-end (CORS) et que l'on stocke l'URL de l'API Hugging Face (`PYTHON_API_URL`).
+* `backdjango/urls.py` : Le routeur principal qui redirige les requêtes entrantes vers les bonnes applications.
+* `api/urls.py` : Le routeur spécifique de l'API qui expose la route `/api/chat` sur le port 8000.
+* `api/views.py` : Le cœur logique. Cette vue reçoit le JSON d'Angular, l'envoie à Hugging Face via la bibliothèque `requests`, intercepte les erreurs HTTP (comme la fameuse 503 "High Demand"), et renvoie une réponse propre au Front-end.
+* 🐳 **`Dockerfile`** : Le script de construction Docker. Il utilise une image allégée (`python:3.12-slim`) pour exécuter le serveur en parfaite isolation, configuré pour écouter sur l'adresse `0.0.0.0:8000`.
+* 📦 **`requirements.txt`** : La liste stricte et épurée des dépendances Python nécessaires (`Django`, `requests`, `django-cors-headers`). Elle a été allégée au maximum pour garantir une construction rapide et légère du conteneur.
+
+== 🔗 Configuration de l'URL Hugging Face
+Pour que ce relais fonctionne, il doit savoir à qui parler.
+Vous ne devez pas utiliser l'URL de démonstration, mais déployer votre propre Cerveau IA.
+
+. Vous trouverez sur ce lien link:../README.adoc#étape-3--déployer-lia-et-placer-les-clés[🚀 Comment obtenir l'URL Hugging Face]. Suivez les instructions pour déployer votre Space.
+. Une fois l'étape terminée et votre URL récupérée (elle ressemble à `https://votre-pseudo-nom-du-space.hf.space/api/chat`), passez à l'étape suivante.
+. Ouvrez le fichier `backdjango/settings.py`.
+. Tout en bas du fichier, modifiez la variable contenant l'URL de l'API :
++
+[source,python]
+----
+PYTHON_API_URL = "https://votre-pseudo-nom-du-space.hf.space/api/chat"
+----
+
+== 🚀 Comment lancer le serveur ?
+
+Vous avez deux options pour démarrer ce relais : la méthode autonome via Docker (Nouveau) ou la méthode manuelle (pour le développement).
+
+=== Méthode 1 : Lancement autonome avec Docker (Recommandé)
+Cette méthode permet de lancer le serveur Django dans une bulle isolée, sans avoir à configurer d'environnement virtuel Python sur votre machine.
+_Prérequis : Avoir Docker installé et démarré._
+
+. Ouvrez un terminal dans le sous-dossier contenant le fichier `Dockerfile` (et `manage.py`).
+. Construisez l'image Docker du relais Python :
++
+[source,bash]
+----
+docker build -t ia-django .
+----
+. Démarrez le conteneur en exposant le port 8000 :
++
+[source,bash]
+----
+docker run -p 8000:8000 ia-django
+----
+Le serveur écoutera les requêtes sur **http://localhost:8000**.
+
+=== Méthode 2 : Lancement manuel de développement
+Il est fortement conseillé de créer un environnement virtuel pour isoler les dépendances du projet si vous souhaitez modifier le code.
+_Prérequis : Python (version 3.12 ou supérieure)._
+
+. Ouvrez un terminal dans le dossier contenant `manage.py` :
++
+[source,bash]
+----
+# Créer l'environnement
+python -m venv venv
+
+# L'activer (Sur Windows)
+venv\Scripts\activate
+# L'activer (Sur Linux / macOS)
+source venv/bin/activate
+----
+
+. Une fois l'environnement activé, installez les bibliothèques requises :
++
+[source,bash]
+----
+pip install -r requirements.txt
+----
+
+. Lancez le serveur sur le port par défaut (`8000`) :
++
+[source,bash]
+----
+python manage.py runserver
+----
+_Note : Si vous voyez un avertissement rouge concernant des "unapplied migrations", ce n'est pas bloquant pour le relais. Vous pouvez le faire disparaître en exécutant `python manage.py migrate` avant de lancer le serveur._
+
+== 🛑 Comment arrêter le serveur ?
+
+* **Si lancé avec Docker (Méthode 1) :** Dans la fenêtre du terminal où tourne le conteneur, appuyez sur **`Ctrl + C`**.
+* **Si lancé manuellement (Méthode 2) :** . Cliquez dans la fenêtre du terminal où le serveur s'exécute.
+. Appuyez simultanément sur les touches **`Ctrl + C`**.
+. Si vous aviez activé un environnement virtuel, vous pouvez le désactiver en tapant la commande `deactivate`.
+
+---
+link:../README.adoc[⬅️ Retour à la racine du projet]

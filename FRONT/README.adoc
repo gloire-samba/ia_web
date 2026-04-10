@@ -1,0 +1,77 @@
+= 🎨 Interface Utilisateur (Front-end Angular)
+:toc: macro
+:toc-title: Sommaire
+:sectnums:
+
+toc::[]
+
+link:../README.adoc[⬅️ Retour à la racine du projet]
+
+== 📖 Objectif du module
+Ce dossier contient l'interface graphique de l'application, développée avec le framework **Angular**.
+Son rôle est de fournir une expérience utilisateur (UX) fluide et interactive, sous la forme d'un chat conversationnel. Il permet à l'utilisateur de :
+* Saisir des requêtes textuelles.
+* Joindre des fichiers (PDF, Word, Excel, images).
+* Basculer dynamiquement entre le serveur relais Java (Spring Boot) et le serveur Python (Django) grâce à un simple bouton.
+* Afficher les réponses de l'IA de manière esthétique et gérer les erreurs de connexion (surcharge des serveurs, etc.).
+
+== 🏗️ Fichiers clés et Architecture
+L'application a été construite autour d'une architecture modulaire classique d'Angular, enrichie pour le déploiement par conteneur :
+
+* `src/app/models/` : Contient les structures de données.
+  ** `chat-request.ts` : Le format de la question envoyée au serveur (texte + fichier converti en Base64).
+  ** `message.ts` : La structure d'un message dans la bulle de chat (expéditeur, texte, nom du fichier, lien de téléchargement).
+* `src/app/services/chat.service.ts` : Le "facteur" de l'application. C'est ce fichier qui gère les requêtes HTTP vers les serveurs relais locaux.
+* `src/app/chat/` : Le composant visuel principal (HTML, CSS et logique d'interception des erreurs).
+* 🐳 **`Dockerfile`** : Le script de construction Docker. Il utilise une approche "multi-stage" : il compile l'application avec Node.js, puis sert les fichiers statiques générés via un serveur web **Nginx** ultra-léger et performant.
+* ⚙️ **`nginx.conf`** : La configuration du serveur Nginx. Elle est indispensable pour gérer le routage interne d'Angular (Single Page Application) et éviter les erreurs 404 lors du rafraîchissement des pages.
+
+== 🔒 Note sur la sécurité
+Ce module Front-end ne contient **aucune clé API Google ni aucune URL Hugging Face**. Il est conçu pour communiquer exclusivement avec les serveurs relais locaux. C'est une mesure de sécurité (séparation des préoccupations) empêchant toute fuite de clés publiques côté client.
+
+== 🚀 Comment lancer le Front-end ?
+
+Vous avez désormais deux méthodes pour lancer l'interface : de manière isolée via Docker (pour la production locale) ou manuellement (pour le développement).
+
+=== Méthode 1 : Lancement autonome avec Docker (Nouveau)
+Cette méthode permet de tester le Front-end compilé avec Nginx, sans avoir besoin d'installer Node.js ou Angular sur votre machine.
+_Prérequis : Avoir Docker installé et démarré._
+
+. Ouvrez un terminal dans le sous-dossier contenant le fichier `Dockerfile`.
+. Construisez l'image Docker de l'interface :
++
+[source,bash]
+----
+docker build -t ia-frontend .
+----
+. Démarrez le conteneur en liant le port 80 de Nginx au port 4200 de votre machine :
++
+[source,bash]
+----
+docker run -p 4200:80 ia-frontend
+----
+L'interface est accessible sur **http://localhost:4200**.
+
+=== Méthode 2 : Lancement manuel de développement
+Cette méthode est idéale si vous souhaitez modifier le code Angular et voir les changements en temps réel.
+_Prérequis : Node.js (v22+) et Angular CLI (v19+)._
+
+. Ouvrez un terminal dans le sous-dossier Angular.
+. Installez les dépendances : `npm install`
+. Démarrez le serveur de développement : `ng serve`
+L'interface est accessible sur **http://localhost:4200**.
+
+---
+⚠️ **Attention : Quel que soit le mode de lancement, l'interface s'ouvrira, mais pour que le chat fonctionne, vous devez impérativement lancer l'un des serveurs relais (Spring Boot ou Django) et sélectionner le bon bouton dans l'interface !**
+
+Vous trouverez ci-dessous les liens directs pour gérer vos serveurs relais :
+* link:../BackSpring/README.adoc#🚀-comment-lancer-le-serveur-[▶️ Comment allumer Spring Boot]
+* link:../BackDjango/README.adoc#🚀-comment-lancer-le-serveur-[▶️ Comment allumer Django]
+
+== 🛑 Comment arrêter le Front-end ?
+
+* **Si lancé avec Docker (Méthode 1) :** Dans le terminal où tourne le conteneur, appuyez sur **`Ctrl + C`**. 
+* **Si lancé manuellement (Méthode 2) :** Dans le terminal où tourne la commande `ng serve`, appuyez simultanément sur **`Ctrl + C`**.
+
+---
+link:../README.adoc[⬅️ Retour à la racine du projet]

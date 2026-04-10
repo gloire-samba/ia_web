@@ -1,0 +1,96 @@
+= ☕ Serveur Relais Java (Spring Boot)
+:toc: macro
+:toc-title: Sommaire
+:sectnums:
+
+toc::[]
+
+link:../../README.adoc[⬅️ Retour à la racine du projet]
+
+== 📖 Objectif du module
+Ce dossier contient le premier des deux serveurs back-end optionnels : le **Relais Spring Boot**.
+Il agit comme un "middleware" (un intermédiaire) entre l'interface utilisateur (Angular) et le cerveau IA (hébergé sur Hugging Face).
+
+**Pourquoi utiliser un relais ?**
+* Pour contourner les restrictions de sécurité des navigateurs web (CORS).
+* Pour formater proprement les données avant de les envoyer à l'IA.
+* Pour intercepter et traduire les erreurs de l'IA (comme la surcharge 503) afin que l'interface Angular puisse afficher un message compréhensible à l'utilisateur.
+
+== 🏗️ Fichiers clés et Architecture
+L'application respecte l'architecture classique et robuste de Spring Boot (Modèle-Vue-Contrôleur / Service), optimisée pour le déploiement :
+
+* `pom.xml` : Le gestionnaire de paquets Maven, qui contient toutes les dépendances du projet (Spring Web, etc.).
+* `src/main/resources/application.properties` : Le fichier de configuration vital (c'est ici que l'on configure l'URL de l'IA et l'affichage des erreurs).
+* `src/main/java/.../BackSpringApplication.java` : Le point d'entrée principal qui démarre l'application.
+* `.../controllers/ChatController.java` : Expose l'URL `/api/chat` sur le port 8080 pour écouter les requêtes d'Angular.
+* `.../services/IaRelayService.java` : La logique métier. C'est ce composant qui utilise un client HTTP pour expédier la question à Hugging Face et récupérer la réponse.
+* `.../models/` : Contient les classes DTO (Data Transfer Objects) qui définissent la forme des données reçues d'Angular et renvoyées par l'IA.
+* 🐳 **`Dockerfile`** : Le script de construction Docker. Il utilise une approche "multi-stage" vitale en Java : il télécharge un environnement lourd (JDK + Maven) pour compiler le code de manière autonome, puis transfère uniquement le fichier `.jar` final dans un environnement ultra-léger (JRE) pour l'exécution.
+
+== 🔗 Configuration de l'URL Hugging Face
+Pour que ce relais fonctionne, il doit savoir à qui parler.
+Vous ne devez pas utiliser l'URL de démonstration (pour des raisons de quotas et de confidentialité), mais déployer votre propre Cerveau IA.
+
+. Vous trouverez sur ce lien link:../../README.adoc#étape-3--déployer-lia-et-placer-les-clés[🚀 Comment obtenir l'URL Hugging Face]. Suivez les instructions pour déployer votre Space.
+. Une fois l'étape terminée et votre URL récupérée (elle ressemble à `https://votre-pseudo-nom-du-space.hf.space`), passez à l'étape suivante.
+. Ouvrez le fichier `src/main/resources/application.properties` dans ce dossier.
+. Modifiez ou ajoutez la variable contenant l'URL de l'API. Par exemple :
++
+[source,properties]
+----
+python.api.url=https://votre-pseudo-nom-du-space.hf.space/api/chat
+----
+
+== 🚀 Comment lancer le serveur ?
+
+Vous avez désormais deux méthodes pour lancer le relais : la méthode autonome via Docker (Nouveau) ou la méthode manuelle (développement).
+
+=== Méthode 1 : Lancement autonome avec Docker (Recommandé)
+Cette méthode permet de compiler et lancer le serveur Java dans un conteneur isolé, sans avoir besoin d'installer Java ou Maven sur votre machine.
+_Prérequis : Avoir Docker installé et démarré._
+
+. Ouvrez un terminal dans ce sous-dossier (là où se trouve le `Dockerfile`).
+. Construisez l'image Docker du relais Spring Boot :
++
+[source,bash]
+----
+docker build -t ia-spring .
+----
+. Démarrez le conteneur en exposant le port par défaut (8080) :
++
+[source,bash]
+----
+docker run -p 8080:8080 ia-spring
+----
+Le serveur écoutera les requêtes sur **http://localhost:8080**.
+
+=== Méthode 2 : Lancement manuel de développement
+_Prérequis : Java JDK (version 21 minimum). Vérifiez que votre variable `JAVA_HOME` pointe bien vers cette version._
+
+**Option A : Via l'interface graphique de votre IDE**
+Si vous utilisez un environnement moderne comme VS Code ou IntelliJ IDEA :
+. Ouvrez le fichier `src/main/java/com/iaspring/backspring/BackSpringApplication.java`.
+. Un bouton **"Run"** ou **"Démarrer"** devrait apparaître au-dessus de la méthode `main`. Cliquez dessus.
+
+**Option B : En ligne de commande (Universelle)**
+. Ouvrez un terminal dans ce dossier.
+. Utilisez le script "Wrapper" de Maven inclus dans le projet :
++
+[source,bash]
+----
+# Sur Linux / macOS :
+./mvnw spring-boot:run
+
+# Sur Windows :
+.\mvnw spring-boot:run
+----
+
+== 🛑 Comment arrêter le serveur ?
+Il est crucial de bien arrêter le serveur pour libérer le port 8080 avant de lancer autre chose.
+
+* **Si lancé avec Docker (Méthode 1) :** Dans le terminal où tourne le conteneur, appuyez sur **`Ctrl + C`**.
+* **Si lancé via l'IDE :** Cliquez sur le bouton "Stop" (généralement un carré rouge) dans la console d'exécution de votre éditeur.
+* **Si lancé via le terminal :** Cliquez dans la fenêtre du terminal et appuyez simultanément sur les touches **`Ctrl + C`**.
+
+---
+link:../../README.adoc[⬅️ Retour à la racine du projet]
