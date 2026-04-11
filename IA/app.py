@@ -459,7 +459,13 @@ def web_search(query: str) -> str:
     try: 
         return DuckDuckGoSearchTool().run(query)
     except: 
-        return "ERREUR_RESEAU. Ne cherche pas dans ta mémoire. Dis exactement ceci à l'utilisateur : 'Je n'ai pas pu vérifier cette information sur Internet à cause d'un blocage réseau temporaire. Pour éviter de vous donner des données fausses ou incomplètes, je préfère ne pas répondre de mémoire.'"
+        return (
+            "ERREUR_RESEAU_WEB_BLOQUE. Exécute EXACTEMENT ce processus dans ta réponse finale :\n"
+            "1. Explique brièvement que l'accès à Internet est bloqué temporairement.\n"
+            "2. Fais une auto-évaluation stricte : connais-tu la réponse à la question avec une CERTITUDE ABSOLUE (100%) dans ta mémoire interne ?\n"
+            "3. SI TU AS LE MOINDRE DOUTE : Ne tente pas de deviner. Dis simplement que sans accès Web, tu ne préfères pas t'avancer pour ne pas donner de fausses informations.\n"
+            "4. SI TU ES SÛR À 100% : Affiche ce message exact avec les emojis : '⚠️ **ATTENTION : Suite au blocage réseau, cette réponse est générée depuis ma mémoire interne. Étant un modèle d'IA gratuit, veuillez vérifier ces informations.** ⚠️'. Puis, fournis ta réponse détaillée et exécute la création du fichier si demandée."
+        )
     
 # La liste COMPLÈTE des imports dont l'IA a besoin pour la V44
 imports_autorises = ["os", "pandas", "zipfile", "openpyxl", "pptx", "docx", "subprocess", "reportlab", "PIL", "csv", "pdf2image", "re", "time"]
@@ -475,11 +481,11 @@ agent = CodeAgent(
 # On réinjecte les règles d'or (LE CERVEAU DE LA V44)
 consigne = """
 RÈGLES D'OR V44 :
-1. ANALYSE LA DEMANDE : S'agit-il de manipuler un fichier (Word, Excel, PPT) ou est-ce une question de culture générale ?
-2. CULTURE GÉNÉRALE : Si la question ne nécessite pas d'analyser un document fourni, réponds directement avec tes propres connaissances sans utiliser d'outil.
-3. MODIF PPT : Utilise 'modificateur_ppt'. Il vide la slide et la recrée proprement avec le contenu final (Image + Texte + Overflow).
-4. MODIF PDF : Convertis (docx/xlsx) -> Modifie -> Reconvertis.
-5. HONNÊTETÉ : Si tu ne trouves pas une info, dis "NON TROUVÉE". Ne l'invente jamais.
+1. ANALYSE LA DEMANDE : Word? Excel? PPT? TXT?
+2. MODIF PPT : Utilise 'modificateur_ppt'. Il vide la slide et la recrée proprement avec le contenu final (Image + Texte + Overflow).
+3. MODIF PDF : Convertis (docx/xlsx) -> Modifie -> Reconvertis.
+4. CITATION DES SOURCES : Lorsque tu utilises l'outil de recherche web avec succès, tu DOIS OBLIGATOIREMENT inclure les liens (URLs) ou le nom des sites sources à la toute fin de ta réponse sous la mention 'Sources :'.
+5. HONNÊTETÉ : N'invente pas de fausses données. Si la recherche web échoue, applique strictement le protocole d'erreur réseau qui t'est fourni par l'outil.
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
