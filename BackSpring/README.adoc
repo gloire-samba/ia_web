@@ -65,7 +65,7 @@ docker run -p 8080:8080 ia-spring
 Le serveur écoutera les requêtes sur **http://localhost:8080**.
 
 === Méthode 2 : Lancement manuel de développement
-_Prérequis : Java JDK (version 21 minimum). Vérifiez que votre variable `JAVA_HOME` pointe bien vers cette version._
+_Prérequis : Java JDK (version 25 minimum). Vérifiez que votre variable `JAVA_HOME` pointe bien vers cette version._
 
 **Option A : Via l'interface graphique de votre IDE**
 Si vous utilisez un environnement moderne comme VS Code ou IntelliJ IDEA :

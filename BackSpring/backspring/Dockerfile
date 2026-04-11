@@ -1,8 +1,8 @@
 # ==========================================
-# ÉTAPE 1 : Construction (Build) avec Maven et le JDK 21
+# ÉTAPE 1 : Construction (Build) avec Maven et le JDK 25
 # ==========================================
 # On utilise l'image officielle Eclipse Temurin (très légère et optimisée)
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM eclipse-temurin:25-jdk-alpine AS builder
 
 # On définit le dossier de travail
 WORKDIR /app
@@ -25,10 +25,10 @@ COPY src ./src
 RUN ./mvnw clean package -DskipTests
 
 # ==========================================
-# ÉTAPE 2 : Exécution avec le JRE 21 (Version allégée)
+# ÉTAPE 2 : Exécution avec le JRE 25 (Version allégée)
 # ==========================================
 # Pour la production, on n'a besoin que du JRE (Java Runtime Environment), pas du compilateur complet
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 
 WORKDIR /app
 
