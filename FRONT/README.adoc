@@ -54,7 +54,7 @@ L'interface est accessible sur **http://localhost:4200**.
 
 === Méthode 2 : Lancement manuel de développement
 Cette méthode est idéale si vous souhaitez modifier le code Angular et voir les changements en temps réel.
-_Prérequis : Node.js (v22+) et Angular CLI (v19+)._
+_Prérequis : Node.js (v24+) et Angular CLI (v21+)._
 
 . Ouvrez un terminal dans le sous-dossier Angular.
 . Installez les dépendances : `npm install`
