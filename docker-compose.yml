@@ -2,8 +2,6 @@ services:
   # 1. Le Front-end Angular (servi par Nginx)
   front:
     build: 
-      # Remplace "nom-du-sous-dossier" par le vrai nom trouvé à l'étape 1
-      # (Exemple: context: ./FRONT/front)
       context: ./FRONT/front
     ports:
       - "4200:80"
@@ -29,7 +27,7 @@ services:
       - web-ia-network
 
 # On crée un réseau virtuel privé pour que nos conteneurs puissent
-# communiquer entre eux si besoin (même si le Front passe par ton navigateur).
+# communiquer entre eux si besoin (même si le Front passe par le navigateur).
 networks:
   web-ia-network:
     driver: bridge

@@ -52,7 +52,7 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 # --- INITIALISATION DU MODÈLE (Le "Cerveau" de tes fichiers) ---
-# Utilisation de Qwen ou Gemini selon ta configuration préférée dans le notebook
+# Utilisation de Qwen ou Gemini selon la configuration dans le notebook
 model = GoogleGenerativeAIModel(
     model_id="gemini-2.5-flash", # Ou le modèle que tu as validé dans tes tests d'embedding
     api_key=api_key
@@ -480,7 +480,7 @@ app = FastAPI(title="IA Bureautique API")
 # --- 2. AJOUT DU CORS POUR AUTORISER ANGULAR ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # En production pro, on mettrait ["http://localhost:4200"] au lieu de ["*"]
+    allow_origins=["*"], # En production pro, il faudra mettre ["http://localhost:4200"] au lieu de ["*"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -497,7 +497,6 @@ class ChatResponse(BaseModel):
     output_file_name: Optional[str] = None
     output_file_base64: Optional[str] = None
 
-# --- POINT D'ENTRÉE PRINCIPAL ---
 # --- POINT D'ENTRÉE PRINCIPAL ---
 @app.post("/api/chat")
 async def process_request(request: ChatRequest):

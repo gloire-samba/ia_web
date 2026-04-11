@@ -28,7 +28,7 @@ export class ChatComponent {
     this.selectedBackend = this.chatService.getCurrentBackend();
   }
 
-  // <-- NOUVEAU : La fonction déclenchée par les boutons
+  // La fonction déclenchée par les boutons
   onBackendChange(backend: BackendType) {
     this.selectedBackend = backend;
     this.chatService.setBackend(backend);
