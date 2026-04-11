@@ -12,7 +12,7 @@ L'architecture est pensée pour être modulaire et démonstrative. Elle sépare 
 
 == Prérequis
 Pour exécuter ce projet localement, votre environnement doit disposer de :
-* Node.js (v22+) et Angular CLI (v19+)
+* Node.js (v24+) et Angular CLI (v21+)
 * Java JDK 21 (Assurez-vous que votre variable `JAVA_HOME` pointe vers la version 21)
 * Python 3.12 ou supérieur
 * **Docker Desktop** (Fortement recommandé pour le déploiement automatisé)
