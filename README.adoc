@@ -10,7 +10,7 @@ Ce projet est une application web complète intégrant une Intelligence Artifici
 
 L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement l'interface utilisateur, les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
 
-=== Prérequis
+== Prérequis
 Pour exécuter ce projet localement, votre environnement doit disposer de :
 * Node.js (v22+) et Angular CLI (v19+)
 * Java JDK 21 (Assurez-vous que votre variable `JAVA_HOME` pointe vers la version 21)
