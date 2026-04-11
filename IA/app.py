@@ -22,7 +22,7 @@ import openpyxl
 import xlsxwriter
 
 
-from smolagents import CodeAgent, LiteLLMModel, tool, DuckDuckGoSearchTool, GoogleGenerativeAIModel, Tool
+from smolagents import CodeAgent, LiteLLMModel, tool, DuckDuckGoSearchTool, Tool
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
@@ -52,9 +52,10 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 # --- INITIALISATION DU MODÈLE (Le "Cerveau" de tes fichiers) ---
-# Utilisation de Qwen ou Gemini selon la configuration dans le notebook
-model = GoogleGenerativeAIModel(
-    model_id="gemini-2.5-flash", # Ou le modèle que tu as validé dans tes tests d'embedding
+# Utilisation de Qwen ou Gemini selon ta configuration préférée dans le notebook
+# --- INITIALISATION DU MODÈLE (Standard smolagents) ---
+model = LiteLLMModel(
+    model_id="gemini/gemini-2.5-flash", 
     api_key=api_key
 )
 
@@ -388,11 +389,14 @@ def editeur_texte_csv(nom_fichier: str, contenu: str, mode: str = "AJOUTER_FIN")
 @tool
 def convertisseur_pdf_vers_editable(chemin_source: str, type_sortie: str = "docx") -> str:
     """
-    Convertit PDF -> Editable (docx ou xlsx).
+    Convertit un fichier PDF vers un format éditable (docx ou xlsx).
+    Args:
+        chemin_source: Le chemin vers le fichier PDF d'origine.
+        type_sortie: Le format de sortie souhaité, soit 'docx' soit 'xlsx'.
     """
     try:
         abs_in = os.path.abspath(chemin_source)
-        dossier_sortie = os.path.dirname(abs_in) # <-- CORRECTION : On récupère le bon dossier
+        dossier_sortie = os.path.dirname(abs_in)
         nom_sortie = os.path.splitext(chemin_source)[0] + "." + type_sortie
         
         args = ['libreoffice', '--headless', '--convert-to', type_sortie, abs_in, '--outdir', dossier_sortie]
@@ -404,11 +408,13 @@ def convertisseur_pdf_vers_editable(chemin_source: str, type_sortie: str = "docx
 @tool
 def convertisseur_editable_vers_pdf(chemin_source: str) -> str:
     """
-    Convertit Editable -> PDF.
+    Convertit un fichier éditable (Word, Excel, PPT) vers le format PDF.
+    Args:
+        chemin_source: Le chemin vers le fichier source à convertir en PDF.
     """
     try:
         abs_in = os.path.abspath(chemin_source)
-        dossier_sortie = os.path.dirname(abs_in) # <-- CORRECTION : On récupère le bon dossier
+        dossier_sortie = os.path.dirname(abs_in)
         
         subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', abs_in, '--outdir', dossier_sortie], check=True, stdout=subprocess.DEVNULL)
         return "Succès. Reconverti en PDF."
@@ -430,13 +436,13 @@ def outil_vision(chemin_image: str, question: str) -> str:
 @tool
 def outil_rag(question: str) -> str:
     """
-    Cherche info textuelle dans la mémoire (RAG).
-
+    Cherche des informations UNIQUEMENT dans les documents fournis par l'utilisateur (RAG).
+    NE L'UTILISE PAS pour des questions de culture générale.
     Args:
         question: La question.
     """
     global vectorstore_global
-    if vectorstore_global is None: return "Aucun document."
+    if vectorstore_global is None: return "Aucun document fourni par l'utilisateur."
     try:
         docs = vectorstore_global.similarity_search(question, k=10)
         return "\n".join([d.page_content for d in docs])
@@ -467,10 +473,11 @@ agent = CodeAgent(
 # On réinjecte les règles d'or (LE CERVEAU DE LA V44)
 consigne = """
 RÈGLES D'OR V44 :
-1. ANALYSE LA DEMANDE : Word? Excel? PPT? TXT?
-2. MODIF PPT : Utilise 'modificateur_ppt'. Il vide la slide et la recrée proprement avec le contenu final (Image + Texte + Overflow).
-3. MODIF PDF : Convertis (docx/xlsx) -> Modifie -> Reconvertis.
-4. HONNÊTETÉ : Si tu ne trouves pas une info, dis "NON TROUVÉE".
+1. ANALYSE LA DEMANDE : S'agit-il de manipuler un fichier (Word, Excel, PPT) ou est-ce une question de culture générale ?
+2. CULTURE GÉNÉRALE : Si la question ne nécessite pas d'analyser un document fourni, réponds directement avec tes propres connaissances sans utiliser d'outil.
+3. MODIF PPT : Utilise 'modificateur_ppt'. Il vide la slide et la recrée proprement avec le contenu final (Image + Texte + Overflow).
+4. MODIF PDF : Convertis (docx/xlsx) -> Modifie -> Reconvertis.
+5. HONNÊTETÉ : Si tu ne trouves pas une info, dis "NON TROUVÉE". Ne l'invente jamais.
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
@@ -480,7 +487,7 @@ app = FastAPI(title="IA Bureautique API")
 # --- 2. AJOUT DU CORS POUR AUTORISER ANGULAR ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # En production pro, il faudra mettre ["http://localhost:4200"] au lieu de ["*"]
+    allow_origins=["*"], # En production pro, on mettrait ["http://localhost:4200"] au lieu de ["*"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -497,6 +504,7 @@ class ChatResponse(BaseModel):
     output_file_name: Optional[str] = None
     output_file_base64: Optional[str] = None
 
+# --- POINT D'ENTRÉE PRINCIPAL ---
 # --- POINT D'ENTRÉE PRINCIPAL ---
 @app.post("/api/chat")
 async def process_request(request: ChatRequest):
@@ -524,12 +532,21 @@ async def process_request(request: ChatRequest):
             
         # 2. Exécution de l'IA
         # On demande à l'agent de travailler dans le dossier spécifique
+        # 2. Exécution de l'IA
+        # Construction de l'instruction de base
         instruction = (
             f"RÈGLE ABSOLUE : Ton espace de travail est le dossier '{work_dir}/'. "
-            f"Tu DOIS OBLIGATOIREMENT préfixer tous les noms de fichiers que tu crées, modifies ou lis avec ce chemin exact "
-            f"(exemple : '{work_dir}/nom_du_fichier.docx').\n\n"
-            f"Demande de l'utilisateur : {request.prompt}"
+            f"Tu DOIS OBLIGATOIREMENT préfixer tous les noms de fichiers que tu crées, modifies ou lis avec ce chemin exact.\n"
         )
+        
+        # CORRECTION : Si un fichier est fourni, on le dit explicitement à l'agent !
+        if input_path:
+            instruction += (
+                f"\n⚠️ INFORMATION IMPORTANTE : L'utilisateur a joint un fichier nommé '{request.file_name}'. "
+                f"Son chemin d'accès complet est '{input_path}'. Utilise tes outils sur ce fichier si la demande le nécessite.\n"
+            )
+
+        instruction += f"\nDemande de l'utilisateur : {request.prompt}"
         resultat_ia = agent.run(instruction)
 
         # 3. Détection de fichiers générés/modifiés
