@@ -450,7 +450,12 @@ def outil_rag(question: str) -> str:
 
 @tool
 def web_search(query: str) -> str:
-    """Recherche Web (DuckDuckGo)."""
+    """
+    Recherche Web (DuckDuckGo).
+
+    Args:
+        query: Mots-clés de la recherche.
+    """
     try: 
         return DuckDuckGoSearchTool().run(query)
     except: 
