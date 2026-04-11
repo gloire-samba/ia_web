@@ -450,14 +450,11 @@ def outil_rag(question: str) -> str:
 
 @tool
 def web_search(query: str) -> str:
-    """
-    Recherche Web (DuckDuckGo).
-
-    Args:
-        query: Mots-clés.
-    """
-    try: return DuckDuckGoSearchTool().run(query)
-    except: return "Erreur Web"
+    """Recherche Web (DuckDuckGo)."""
+    try: 
+        return DuckDuckGoSearchTool().run(query)
+    except: 
+        return "ERREUR_RESEAU. Ne cherche pas dans ta mémoire. Dis exactement ceci à l'utilisateur : 'Je n'ai pas pu vérifier cette information sur Internet à cause d'un blocage réseau temporaire. Pour éviter de vous donner des données fausses ou incomplètes, je préfère ne pas répondre de mémoire.'"
     
 # La liste COMPLÈTE des imports dont l'IA a besoin pour la V44
 imports_autorises = ["os", "pandas", "zipfile", "openpyxl", "pptx", "docx", "subprocess", "reportlab", "PIL", "csv", "pdf2image", "re", "time"]
