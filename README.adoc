@@ -118,3 +118,19 @@ python manage.py runserver
 **Arrêter et changer de relais manuellement :**
 * Appuyez sur **`Ctrl + C`** dans le terminal du serveur en cours d'exécution.
 * _Exemple : Pour passer de Spring à Django, coupez le terminal Spring, puis ouvrez le dossier Django et lancez la commande de démarrage Python._
+
+== 🛑 Comment arrêter le jeu ?
+Pour arrêter les conteneurs sans perdre vos données :
+[source,bash]
+----
+sudo docker-compose down
+----
+
+== 🛠️ Dépannage et Remise à zéro
+Si vous souhaitez effectuer un nettoyage complet et supprimer les données de jeu (utilisateurs et parties sauvegardées) pour repartir à zéro :
+
+[source,bash]
+----
+sudo docker-compose down -v
+----
+_Cette commande supprime uniquement les volumes Docker rattachés à ce projet._
