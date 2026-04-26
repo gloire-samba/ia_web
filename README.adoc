@@ -119,7 +119,7 @@ python manage.py runserver
 * Appuyez sur **`Ctrl + C`** dans le terminal du serveur en cours d'exécution.
 * _Exemple : Pour passer de Spring à Django, coupez le terminal Spring, puis ouvrez le dossier Django et lancez la commande de démarrage Python._
 
-== 🛑 Comment arrêter le jeu ?
+== 🛑 Comment arrêter l'application ?
 Pour arrêter les conteneurs sans perdre vos données :
 [source,bash]
 ----
