@@ -77,7 +77,7 @@ _Grâce à Docker, Spring Boot et Django sont allumés simultanément en arrièr
 
 **Arrêter l'application :**
 . Allez dans le terminal où défilent les logs.
-. Appuyez sur **`Ctrl + C`** pour éteindre tous les serveurs en douceur, ou tapez la commande `docker compose down` dans un autre terminal.
+. Appuyez sur **`Ctrl + C`** pour éteindre tous les serveurs en douceur, puis tapez la commande `docker compose down -v` pour supprimer les volumes et les images.
 
 ---
 
