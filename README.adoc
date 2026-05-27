@@ -8,7 +8,7 @@ toc::[]
 == 📖 Présentation du Projet
 Ce projet est une application web complète intégrant une Intelligence Artificielle générative (basée sur Gemini 2.5 Flash) capable de converser, de rechercher sur le web et de manipuler des documents bureautiques complexes (Word, Excel, PowerPoint, PDF).
 
-L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement l'interface utilisateur, les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
+L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement les interfaces utilisateurs (deux clones parfaits en Angular et React), les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
 
 == Prérequis
 Pour exécuter ce projet localement, votre environnement doit disposer de :
@@ -18,18 +18,20 @@ Pour exécuter ce projet localement, votre environnement doit disposer de :
 * **Docker Desktop** (Fortement recommandé pour le déploiement automatisé)
 
 == 🏗️ Architecture et Composants
-Le projet est divisé en 4 modules indépendants orchestrés par Docker.
+Le projet est divisé en 5 modules indépendants orchestrés par Docker.
 *Cliquez sur les liens pour accéder à la documentation détaillée de chaque module.*
 
-* 🎨 link:FRONT/README.adoc[**FRONT (Angular)**] : L'interface graphique de chat, permettant d'envoyer des instructions et des fichiers.
+* 🎨 link:FRONT/README.adoc[**FRONT (Angular)**] : L'interface graphique de chat originelle sur le port 4200.
+* ⚛️ link:FRONTREACT/README.adoc[**FRONTREACT (React)**] : L'interface graphique de chat alternative, développée avec Vite sur le port 5173.
 * ☕ link:BackSpring/README.adoc[**BackSpring (Java / Spring Boot)**] : Le premier serveur relais (Port 8080).
 * 🎸 link:BackDjango/README.adoc[**BackDjango (Python / Django)**] : Le second serveur relais (Port 8000).
 * 🧠 link:IA/README.adoc[**IA (Python / FastAPI)**] : Le code du cerveau IA, destiné à être hébergé sur Hugging Face.
-* 🐳 **`docker-compose.yml`** : Le chef d'orchestre. Ce fichier permet de démarrer l'interface et les deux relais simultanément dans des conteneurs isolés avec une seule commande.
+* 🐳 **`docker-compose.yml`** : Le chef d'orchestre. Ce fichier permet de démarrer les deux interfaces et les deux relais simultanément dans des conteneurs isolés avec une seule commande.
 
 == 🔑 Prérequis Absolus : Clés API et Configuration
 L'application ne peut pas fonctionner sans son "cerveau".
-Pour des raisons de sécurité et de quotas, le code source ne contient pas de clés publiques. Vous devez générer les vôtres et déployer votre propre instance IA.
+Pour des raisons de sécurité et de quotas, le code source ne contient pas de clés publiques.
+Vous devez générer les vôtres et déployer votre propre instance IA.
 
 === Étape 1 : Obtenir la clé Google (Moteur IA)
 . Allez sur https://aistudio.google.com/[Google AI Studio] et connectez-vous.
@@ -62,7 +64,9 @@ Vous devez indiquer à Spring Boot et Django où trouver votre IA.
 Vous avez deux possibilités pour lancer ce projet : la méthode automatisée (via Docker) ou la méthode manuelle.
 
 === Méthode 1 : Lancement avec Docker (Recommandé 🌟)
-C'est la méthode la plus simple et la plus robuste. Elle garantit que l'application fonctionnera avec les bonnes versions des langages sans rien polluer sur votre machine. **Avantage majeur : les deux serveurs relais tournent en parallèle !**
+C'est la méthode la plus simple et la plus robuste.
+Elle garantit que l'application fonctionnera avec les bonnes versions des langages sans rien polluer sur votre machine.
+**Avantage majeur : les deux interfaces et les deux serveurs relais tournent en parallèle !**
 
 **Démarrer l'application :**
 . Ouvrez un terminal à la racine absolue du projet.
@@ -72,32 +76,43 @@ C'est la méthode la plus simple et la plus robuste. Elle garantit que l'applica
 ----
 docker compose up --build
 ----
-. L'application est disponible sur **http://localhost:4200**. 
-_Grâce à Docker, Spring Boot et Django sont allumés simultanément en arrière-plan. Vous pouvez basculer de l'un à l'autre en temps réel via les boutons de l'interface graphique !_
+. Les applications sont disponibles sur :
+  * **http://localhost:4200** pour l'interface Angular.
+  * **http://localhost:5173** pour l'interface React.
+
+_Grâce à Docker, tout est allumé simultanément en arrière-plan. Vous pouvez basculer d'une interface à l'autre et interroger Spring Boot ou Django en temps réel !_
 
 **Arrêter l'application :**
 . Allez dans le terminal où défilent les logs.
-. Appuyez sur **`Ctrl + C`** pour éteindre tous les serveurs en douceur, puis tapez la commande `docker compose down -v` pour supprimer les volumes et les images.
+. Appuyez sur **`Ctrl + C`** pour éteindre tous les serveurs en douceur, puis tapez la commande `docker compose down -v` pour supprimer les volumes et les réseaux.
 
 ---
 
 === Méthode 2 : Lancement Manuel (Développement)
 Si vous souhaitez modifier le code et voir les changements en temps réel sans recompiler les conteneurs Docker, vous devez lancer les modules individuellement.
-
 ⚠️ **Règle d'or de la méthode manuelle :** N'allumez qu'**UN SEUL** serveur relais à la fois pour éviter les conflits réseau et la surcharge mémoire.
 
-**1. Lancer l'Interface (Front-end)**
-Ouvrez un premier terminal :
+**1. Lancer l'Interface (Choisissez Angular ou React)**
+
+_Pour Angular :_
 [source,bash]
 ----
 cd FRONT/votre-dossier-angular
 npm install   # La première fois uniquement
 ng serve
 ----
-_L'interface est disponible sur http://localhost:4200._
+
+_Pour React :_
+[source,bash]
+----
+cd FRONTREACT/front-react
+npm install   # La première fois uniquement
+npm run dev
+----
 
 **2. Lancer un Serveur Relais (Choisissez votre Back-end)**
-Ouvrez un *second* terminal et choisissez le moteur de votre choix. Dans l'interface Angular, assurez-vous de sélectionner le bouton correspondant au serveur que vous venez d'allumer !
+Ouvrez un *second* terminal et choisissez le moteur de votre choix.
+Dans l'interface, assurez-vous de sélectionner le bouton correspondant au serveur que vous venez d'allumer !
 
 **Option A : Lancer Spring Boot (Java)**
 [source,bash]

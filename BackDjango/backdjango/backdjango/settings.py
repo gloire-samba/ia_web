@@ -130,7 +130,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Autoriser le Front-end Angular à nous parler
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
+    "http://localhost:4200",  # L'autorisation pour Angular
+    "http://localhost:5173",  # LA NOUVELLE autorisation pour React
 ]
 
 # Autoriser les gros fichiers (50 MB) envoyés en JSON (Base64)

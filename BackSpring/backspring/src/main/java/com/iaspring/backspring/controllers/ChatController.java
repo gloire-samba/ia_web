@@ -12,7 +12,8 @@ import com.iaspring.backspring.services.IaRelayService;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = "http://localhost:4200") // INDISPENSABLE : Autorise Angular à communiquer
+// INDISPENSABLE : Autorise Angular ET React à communiquer
+@CrossOrigin(origins = {"http://localhost:4200", "http://localhost:5173"})
 public class ChatController {
 
     private final IaRelayService iaRelayService;

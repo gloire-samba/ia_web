@@ -8,7 +8,16 @@ services:
     networks:
       - web-ia-network
 
-  # 2. Le relais Java / Spring Boot
+  # 2. Le Front-end React (servi par Nginx)
+  front-react:
+    build: 
+      context: ./FRONTREACT/front-react
+    ports:
+      - "5173:80"
+    networks:
+      - web-ia-network
+
+  # 3. Le relais Java / Spring Boot
   spring:
     build: 
       context: ./BackSpring/backspring
@@ -17,7 +26,7 @@ services:
     networks:
       - web-ia-network
 
-  # 3. Le relais Python / Django
+  # 4. Le relais Python / Django
   django:
     build: 
       context: ./BackDjango/backdjango

@@ -1,5 +1,18 @@
 <div class="chat-container">
 
+  <div class="app-header">
+    <div class="badges-container">
+      <span class="status-badge badge-front">🖥️ Front : Angular</span>
+      <span class="status-badge badge-back">
+        ⚙️ Back : {{ selectedBackend === 'spring' ? 'Spring Boot ☕' : 'Django 🎸' }}
+      </span>
+    </div>
+    
+    <button class="switch-app-btn" (click)="switchToReact()">
+      Déconnexion ➔ Vue React ⚛️
+    </button>
+  </div>
+
   <div class="backend-selector">
     <span class="selector-label">Serveur Relais :</span>
     

@@ -120,4 +120,13 @@ export class ChatComponent {
       }
     });
   }
+
+  // Fonction de déconnexion et redirection vers React
+  switchToReact() {
+    // Si tu as un système de session plus tard, c'est ici qu'il faudra le vider
+    // Exemple : localStorage.clear();
+    // sessionStorage.clear();
+    console.log("Déconnexion d'Angular... Redirection vers React.");
+    window.location.href = 'http://localhost:5173/';
+  }
 }
