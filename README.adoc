@@ -17,6 +17,52 @@ Pour exécuter ce projet localement, votre environnement doit disposer de :
 * Python 3.12 ou supérieur
 * **Docker Desktop** (Fortement recommandé pour le déploiement automatisé)
 
+== ⚙️ Configuration des variables d'environnement
+
+Avant de lancer les serveurs, vous devez configurer vos clés de sécurité et d'API. Le projet requiert deux fichiers de configuration : un `.env` pour Django/IA et un `application-secret.properties` pour Spring Boot.
+
+=== 1. Fichier `.env` (Pour Django)
+Créez un fichier `.env` à la racine de votre dossier **Django** (à côté de `manage.py`) et remplissez-le en vous basant sur ce modèle :
+
+[source,properties]
+----
+# --- AUTHENTIFICATION SOCIALE ---
+GITHUB_CLIENT_ID=votre_client_id_github_ici
+GITHUB_CLIENT_SECRET=votre_secret_github_ici
+
+GOOGLE_CLIENT_ID=votre_client_id_google_ici
+GOOGLE_CLIENT_SECRET=votre_secret_google_ici
+
+# --- SÉCURITÉ ---
+JWT_SECRET_KEY=mettez_une_cle_secrete_tres_longue_ici
+----
+
+=== 2. Fichier `application-secret.properties` (Pour Spring Boot)
+Créez un fichier `application-secret.properties` dans le dossier `src/main/resources/` de votre projet **Spring Boot** :
+
+[source,properties]
+----
+# ==========================================
+# CLÉS JWT (JSON Web Token)
+# ==========================================
+jwt.secret=mettez_une_cle_secrete_tres_longue_ici
+jwt.expiration=86400000
+
+# ==========================================
+# OAUTH2 GOOGLE
+# ==========================================
+spring.security.oauth2.client.registration.google.client-id=votre_client_id_google_ici
+spring.security.oauth2.client.registration.google.client-secret=votre_secret_google_ici
+spring.security.oauth2.client.registration.google.scope=profile,email
+
+# ==========================================
+# OAUTH2 GITHUB
+# ==========================================
+spring.security.oauth2.client.registration.github.client-id=votre_client_id_github_ici
+spring.security.oauth2.client.registration.github.client-secret=votre_secret_github_ici
+spring.security.oauth2.client.registration.github.scope=user:email
+----
+
 == 🏗️ Architecture et Composants
 Le projet est divisé en 5 modules indépendants orchestrés par Docker.
 *Cliquez sur les liens pour accéder à la documentation détaillée de chaque module.*
@@ -28,36 +74,86 @@ Le projet est divisé en 5 modules indépendants orchestrés par Docker.
 * 🧠 link:IA/README.adoc[**IA (Python / FastAPI)**] : Le code du cerveau IA, destiné à être hébergé sur Hugging Face.
 * 🐳 **`docker-compose.yml`** : Le chef d'orchestre. Ce fichier permet de démarrer les deux interfaces et les deux relais simultanément dans des conteneurs isolés avec une seule commande.
 
-== 🔑 Prérequis Absolus : Clés API et Configuration
-L'application ne peut pas fonctionner sans son "cerveau".
-Pour des raisons de sécurité et de quotas, le code source ne contient pas de clés publiques.
-Vous devez générer les vôtres et déployer votre propre instance IA.
+== 🔑 Tutoriel : Obtenir vos Clés et Configurer les Services externes
 
-=== Étape 1 : Obtenir la clé Google (Moteur IA)
-. Allez sur https://aistudio.google.com/[Google AI Studio] et connectez-vous.
-. Cliquez sur **Create API key** et copiez la clé générée (`AIza...`).
+=== Étape 1 : Obtenir la clé Google Gemini (Pour l'IA)
+Cette clé permet au microservice IA d'analyser vos requêtes et de transcrire l'audio.
 
-=== Étape 2 : Obtenir le jeton Hugging Face (Modèle de mémoire)
-. Créez un compte sur https://huggingface.co/[Hugging Face].
-. Allez dans **Settings** > **Access Tokens**.
-. Cliquez sur **Create new token** (Type : **Read**) et copiez le jeton (`hf_...`).
+1. Allez sur https://aistudio.google.com/[Google AI Studio].
 
-=== Étape 3 : Déployer l'IA et placer les clés
-. Créez un **Space (Docker)** sur Hugging Face et téléversez-y le contenu du dossier `IA/`.
-. Dans l'onglet **Settings** > **Variables and secrets** de votre Space, ajoutez vos clés :
-  * Name: `GOOGLE_API_KEY` | Value: _Votre clé Google_
-  * Name: `HF_TOKEN` | Value: _Votre jeton Hugging Face_
-. Faites un **Factory Rebuild**.
-Votre IA est en ligne ! Copiez l'URL de votre Space (ex: `https://votre-pseudo-space.hf.space/api/chat`).
+2. Connectez-vous avec un compte Google.
 
-=== Étape 4 : Connecter les Relais à votre IA
-Vous devez indiquer à Spring Boot et Django où trouver votre IA.
-* **Pour Spring Boot :** Ouvrez `BackSpring/backspring/src/main/resources/application.properties` et modifiez la ligne :
-  `python.api.url=VOTRE_URL_HUGGING_FACE`
-* **Pour Django :** Ouvrez `BackDjango/backdjango/settings.py` et modifiez la ligne à la fin du fichier :
-  `PYTHON_API_URL = "VOTRE_URL_HUGGING_FACE"`
+3. Cliquez sur **"Get API key"** à gauche, puis sur le bouton bleu **"Create API key"**.
 
----
+4. Copiez cette clé (elle commence généralement par `AIza...`). Gardez-la sous la main pour l'étape 2.
+
+=== Étape 2 : Déployer le microservice IA sur Hugging Face
+L'IA de notre application ne tourne pas sur votre machine, mais dans le cloud.
+
+1. Créez un compte sur https://huggingface.co/[Hugging Face].
+
+2. En haut à droite, cliquez sur votre profil puis sur **"New Space"**.
+
+3. Donnez un nom au Space (ex: `mon-agence-ia`), choisissez la licence (ex: MIT), sélectionnez le SDK **"Docker"** (Blank), puis rendez le Space **Public**.
+
+4. Cliquez sur **"Create Space"**.
+
+5. Allez dans l'onglet **"Settings"** de votre Space, puis dans **"Variables and secrets"**.
+
+6. Dans la section **"Secrets"**, ajoutez une nouvelle variable :
+   * Name : `GOOGLE_API_KEY`
+   * Value : _La clé obtenue à l'Étape 1_.
+
+7. Allez dans l'onglet **"Files"** de votre Space, et uploadez le fichier `main.py`, le fichier `requirements.txt` et le `Dockerfile` de votre dossier IA.
+
+8. Le Space va démarrer ("Building" puis "Running"). **Copiez l'URL de votre Space** et mettez-la à jour dans les fichiers `IaClientService.java` (Spring) et `services.py` (Django) pour que vos backends pointent vers ce nouveau cerveau.
+
+=== Étape 3 : Obtenir le mot de passe d'application Google (Pour envoyer les billets par E-mail)
+
+Pour des raisons de sécurité, Google n'autorise plus la connexion avec votre mot de passe habituel. Il faut créer un "mot de passe d'application".
+
+1. Allez sur les https://myaccount.google.com/security[Paramètres de sécurité de votre compte Google].
+
+2. Activez la **Validation en deux étapes** si ce n'est pas déjà fait.
+
+3. Cherchez **"Mots de passe des applications"** dans la barre de recherche des paramètres.
+
+4. Générez un mot de passe (donnez-lui le nom "Agence Voyage").
+
+5. Google va afficher un code de 16 lettres. **Copiez-le sans les espaces** et collez-le dans vos variables `EMAIL_HOST_PASSWORD` (Django) et `spring.mail.password` (Spring).
+
+=== Étape 4 : Configurer la connexion avec GitHub et Google (OAuth 2.0)
+
+==== 🌐 Google Cloud Console
+1. Allez sur la link:https://console.cloud.google.com/[Google Cloud Console].
+2. Créez un nouveau projet.
+3. Accédez à **API et services > Identifiants**.
+4. Cliquez sur **Créer des identifiants > ID de client OAuth**.
+5. Configurez l'écran de consentement en mode **"Externe"**.
+6. **Origines JavaScript autorisées :**
+   * Pour angular : `http://localhost:4200`
+   * Pour React : `http://localhost:5173`
+7. **URI de redirection autorisés :**
+   * Pour Spring : `http://localhost:8080/login/oauth2/code/google`
+   * Pour Django : `http://localhost:8000/accounts/google/login/callback/`
+8. Notez votre **Client ID** et **Client Secret**.
+
+==== 🐙 GitHub Developer Settings
+1. Allez dans vos **Settings** GitHub > **Developer Settings** > **OAuth Apps**.
+2. Cliquez sur **New OAuth App**.
+3. **Homepage URL :** `http://localhost:4200` ( ici l'url que vous allez mettre sur  n'aura aucune importance, *mais assurez vous d'avoir aumoins mis soit l'url de 'angular ou soit celui de react* )
+4. **Authorization callback URL :**
+   * Pour Spring : `http://localhost:8080/login/oauth2/code/github`
+   * Pour Django : `http://localhost:8000/accounts/github/login/callback/`
+5. Enregistrez et générez un **Client Secret**.
+
+=== Étape 5 : Configurer Stripe (Paiements sécurisés)
+1. Créez un compte gratuit sur https://dashboard.stripe.com/[Stripe].
+2. Restez impérativement en **Mode Test** (un petit badge en haut à droite).
+3. Allez dans l'onglet **"Développeurs" > "Clés API"**.
+4. Copiez la **Clé secrète** (commençant par `sk_test_...`) et mettez-la dans vos fichiers `.env` et `.properties`.
+5. Notez également votre **Clé publique** (commençant par `pk_test_...`) et vérifiez qu'elle est bien configurée dans le fichier `paiement.component.ts` de votre projet Angular.
+
 
 == 🚀 Guide de Lancement et d'Arrêt Global
 
