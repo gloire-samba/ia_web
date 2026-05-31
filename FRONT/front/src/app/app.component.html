@@ -1,1 +1,39 @@
-<router-outlet></router-outlet>
+<div class="app-layout">
+    
+<header class="navbar">
+    <div class="logo">
+    <span class="icon">🤖</span> IA Bureautique
+    </div>
+
+    <div class="status-badge">
+        <span style="color: #dd0031; font-weight: bold;">🖥️ Front: Angular</span>
+        <span class="divider" style="margin: 0 10px;">|</span>
+        <span [ngStyle]="{'color': serveurActif === 'spring' ? '#28a745' : '#007bff', 'font-weight': 'bold'}">
+        🗄️ Back: {{ serveurActif === 'spring' ? 'Spring Boot ☕' : 'Django 🎸' }}
+        </span>
+    </div>
+    
+    <div class="backend-selector">
+    <button type="button" style="background-color: #00d8ff; color: #1c1d21; font-weight: bold;" (click)="basculerVersReact()">⚛️ Vue React</button>
+    <button 
+        [class.active-spring]="serveurActif === 'spring'" 
+        (click)="changerServeur('spring')">
+        ☕ Spring
+    </button>
+    <button 
+        [class.active-django]="serveurActif === 'django'" 
+        (click)="changerServeur('django')">
+        🎸 Django
+    </button>
+    </div>
+    
+    <nav class="nav-links">
+    <button class="btn-logout" (click)="deconnexion()">🚪 Déconnexion</button>
+    </nav>
+</header>
+  
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

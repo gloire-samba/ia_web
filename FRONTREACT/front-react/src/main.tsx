@@ -1,11 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom'; // 👉 Import indispensable
 import App from './App';
-import './index.css'; // Si tu as un style global
+import './index.css';
 
-// C'est ici que l'application React "démarre" et s'accroche au HTML
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    {/* 👉 On englobe toute l'application dans le routeur */}
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>
 );

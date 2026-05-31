@@ -1,0 +1,57 @@
+<div class="login-container">
+  <div class="login-box">
+    
+    <h2>Connexion à l'IA</h2>
+
+    <div *ngIf="messageErreur" class="alert error">{{ messageErreur }}</div>
+
+    <form (ngSubmit)="onSubmit()">
+      
+      <div class="form-group">
+        <label for="email">Adresse Email</label>
+        <input type="email" id="email" name="email" [(ngModel)]="formData.email" placeholder="utilisateur@exemple.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <div class="password-wrapper">
+          <input 
+            [type]="hidePassword ? 'password' : 'text'" 
+            id="password" 
+            name="password" 
+            [(ngModel)]="formData.motDePasse" 
+            placeholder="••••••••" 
+            required
+          >
+          <button type="button" class="btn-eye" (click)="togglePasswordVisibility()">
+            {{ hidePassword ? '👁️' : '🙈' }}
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">Se Connecter</button>
+
+      <div class="toggle-mode">
+        Pas encore inscrit ? <a routerLink="/inscription">Créer un compte ici</a>
+      </div>
+    </form>
+
+    <div class="divider">
+      <span>OU</span>
+    </div>
+
+    <div class="social-login">
+      <div class="social-buttons">
+        <button type="button" class="btn-social google" (click)="connexionSociale('google')">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
+          Google
+        </button>
+        <button type="button" class="btn-social github" (click)="connexionSociale('github')">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub">
+          GitHub
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>

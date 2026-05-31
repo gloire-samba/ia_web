@@ -2,6 +2,7 @@ import { environment } from '../environments/environment.development';
 import type { ChatRequest } from '../models/chat-request';
 import type { ChatResponse } from '../models/chat-response';
 
+import { apiFetch } from './jwt.interceptor'; // 👉 Import de ton intercepteur sécurisé
 
 export type BackendType = 'spring' | 'django';
 
@@ -10,12 +11,20 @@ class ChatService {
   private apiUrl = environment.urls[this.currentBackend];
 
   constructor() {
+    // 👉 Récupération au démarrage de l'application après la redirection
+    const savedBackend = sessionStorage.getItem('activeBackend') as BackendType;
+    if (savedBackend === 'spring' || savedBackend === 'django') {
+      this.currentBackend = savedBackend;
+    }
+    this.apiUrl = environment.urls[this.currentBackend];
     console.log(`🔌 Initialisé sur le backend : ${this.currentBackend.toUpperCase()}`);
   }
 
   setBackend(backend: BackendType) {
     this.currentBackend = backend;
     this.apiUrl = environment.urls[backend];
+    // 👉 Persistance du choix
+    sessionStorage.setItem('activeBackend', backend);
     console.log(`🔄 Bascule sur le backend : ${backend.toUpperCase()} -> ${this.apiUrl}`);
   }
 
@@ -23,16 +32,15 @@ class ChatService {
     return this.currentBackend;
   }
 
-  // Utilisation de fetch au lieu de HttpClient
+  // 👉 MODIFICATION : Utilisation de apiFetch au lieu de fetch natif
   async sendMessage(request: ChatRequest): Promise<ChatResponse> {
-    const response = await fetch(this.apiUrl, {
+    const response = await apiFetch(this.apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request)
     });
 
     if (!response.ok) {
-      // On lève une erreur contenant le texte du serveur pour reproduire la logique Angular
       throw new Error(await response.text());
     }
 
@@ -51,6 +59,7 @@ class ChatService {
     });
   }
 
+  // Correction de l'erreur TS6133 précédente : le paramètre inutilisé fileName a été retiré
   createDownloadUrl(base64: string): string {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);
@@ -64,5 +73,4 @@ class ChatService {
   }
 }
 
-// On exporte une instance unique pour s'en servir partout
 export const chatService = new ChatService();

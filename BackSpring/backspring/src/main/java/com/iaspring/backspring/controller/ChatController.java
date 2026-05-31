@@ -1,4 +1,4 @@
-package com.iaspring.backspring.controllers;
+package com.iaspring.backspring.controller;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.iaspring.backspring.dto.ChatRequest;
 import com.iaspring.backspring.dto.ChatResponse;
-import com.iaspring.backspring.services.IaRelayService;
+import com.iaspring.backspring.service.IaRelayService;
 
 @RestController
 @RequestMapping("/api/chat")

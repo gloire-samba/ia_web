@@ -26,7 +26,8 @@ export class ChatService {
   setBackend(backend: BackendType) {
     this.currentBackend = backend;
     this.apiUrl = environment.urls[backend];
-    console.log(`🔄 Bascule sur le backend : ${backend.toUpperCase()} -> ${this.apiUrl}`);
+    // 👉 Sauvegarde indispensable avant de quitter la page
+    sessionStorage.setItem('activeBackend', backend);
   }
 
   getCurrentBackend(): BackendType {

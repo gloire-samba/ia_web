@@ -1,21 +1,17 @@
 services:
-  # 1. Le Front-end Angular (servi par Nginx)
-  front:
+  # 1. Le Front-end Angular
+  angular:
     build: 
       context: ./FRONT/front
     ports:
       - "4200:80"
-    networks:
-      - web-ia-network
 
-  # 2. Le Front-end React (servi par Nginx)
-  front-react:
+  # 2. Le Front-end React
+  react:
     build: 
       context: ./FRONTREACT/front-react
     ports:
       - "5173:80"
-    networks:
-      - web-ia-network
 
   # 3. Le relais Java / Spring Boot
   spring:
@@ -23,8 +19,12 @@ services:
       context: ./BackSpring/backspring
     ports:
       - "8080:8080"
-    networks:
-      - web-ia-network
+    environment:
+      # Injecte le chemin pour le conteneur Docker
+      - DB_PATH=/app/database/iabdd
+    volumes:
+      # Persistance des données Spring
+      - ./spring_data:/app/database
 
   # 4. Le relais Python / Django
   django:
@@ -32,11 +32,10 @@ services:
       context: ./BackDjango/backdjango
     ports:
       - "8000:8000"
-    networks:
-      - web-ia-network
-
-# On crée un réseau virtuel privé pour que nos conteneurs puissent
-# communiquer entre eux si besoin (même si le Front passe par le navigateur).
-networks:
-  web-ia-network:
-    driver: bridge
+    volumes:
+      - ./BackDjango/backdjango:/app
+    # 👉 AJOUTE CES DEUX LIGNES :
+    env_file:
+      - ./BackDjango/backdjango/.env
+    environment:
+      - PYTHONUNBUFFERED=1

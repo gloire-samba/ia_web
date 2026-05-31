@@ -1,51 +1,17 @@
 <div class="chat-container">
-
-  <div class="app-header">
-    <div class="badges-container">
-      <span class="status-badge badge-front">🖥️ Front : Angular</span>
-      <span class="status-badge badge-back">
-        ⚙️ Back : {{ selectedBackend === 'spring' ? 'Spring Boot ☕' : 'Django 🎸' }}
-      </span>
-    </div>
-    
-    <button class="switch-app-btn" (click)="switchToReact()">
-      Déconnexion ➔ Vue React ⚛️
-    </button>
-  </div>
-
-  <div class="backend-selector">
-    <span class="selector-label">Serveur Relais :</span>
-    
-    <button 
-      [class.active]="selectedBackend === 'spring'" 
-      (click)="onBackendChange('spring')">☕ Spring Boot
-    </button>
-    
-    <button 
-      [class.active]="selectedBackend === 'django'" 
-      (click)="onBackendChange('django')">🎸 Django
-    </button>
-    
-  </div>
   
   <div class="messages-area">
     @for (msg of messages; track $index) {
       <div class="message-bubble" [ngClass]="msg.sender">
-        
         <strong>{{ msg.sender === 'user' ? 'Vous' : 'IA Bureautique' }}</strong>
-        
         <p>{{ msg.text }}</p>
         
         @if (msg.sender === 'user' && msg.fileName) {
-          <div class="file-attachment">
-            📎 {{ msg.fileName }}
-          </div>
+          <div class="file-attachment">📎 {{ msg.fileName }}</div>
         }
 
         @if (msg.sender === 'ia' && msg.downloadUrl) {
-          <a [href]="msg.downloadUrl" [download]="msg.fileName" class="download-btn">
-            ⬇️ Télécharger {{ msg.fileName }}
-          </a>
+          <a [href]="msg.downloadUrl" [download]="msg.fileName" class="download-btn">⬇️ Télécharger {{ msg.fileName }}</a>
         }
       </div>
     }
@@ -58,7 +24,6 @@
   </div>
 
   <div class="input-area">
-    
     @if (selectedFile) {
       <div class="selected-file-badge">
         📎 {{ selectedFile.name }}
@@ -77,10 +42,7 @@
         (keyup.enter)="sendMessage()">
       </textarea>
 
-      <button class="send-btn" (click)="sendMessage()" [disabled]="isLoading">
-        Envoyer
-      </button>
+      <button class="send-btn" (click)="sendMessage()" [disabled]="isLoading">Envoyer</button>
     </div>
-
   </div>
 </div>
