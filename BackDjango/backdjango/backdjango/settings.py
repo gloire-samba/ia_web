@@ -11,16 +11,22 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from pathlib import Path
+import os                           # 👉 AJOUT : Import du module os
+from dotenv import load_dotenv      # 👉 AJOUT : Import de python-dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 👉 AJOUT : Charger explicitement le fichier .env situé à la racine du projet
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-rxq46hck9s)wmf2hys1ca0q1)429vqv6u!3nbo##+nvtwoz0y2"
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -139,3 +145,21 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50 Mo en octets
 
 # URL de l'IA Python
 PYTHON_API_URL = "https://elgronaldo-web-ia.hf.space/api/chat"
+
+# --- CONFIGURATION DES FICHIERS MÉDIAS (UPLOADS) ---
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "uploads"
+
+# ==========================================
+# CONFIGURATION DJANGO REST FRAMEWORK (DRF)
+# ==========================================
+REST_FRAMEWORK = {
+    # On force Django à utiliser UNIQUEMENT notre système JWT
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'api.security.JWTAuthentication',
+    ],
+    # On enlève la vérification par défaut basée sur les sessions
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ]
+}

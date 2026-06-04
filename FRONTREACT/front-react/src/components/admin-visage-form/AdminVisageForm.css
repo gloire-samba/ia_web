@@ -1,0 +1,55 @@
+.login-box {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+h2 {
+  color: #1e293b;
+  margin-bottom: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.form-group { margin-bottom: 1.25rem; }
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+input[type="text"], input[type="file"] {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  transition: border-color 0.3s;
+}
+
+input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background-color: white;
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 0.875rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background-color 0.3s;
+}
+
+.btn-submit:hover { background-color: #2563eb; }

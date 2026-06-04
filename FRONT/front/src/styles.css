@@ -1,1 +1,152 @@
-/* You can add global styles to this file, and also import other style files */
+/* =========================================
+   STYLE GLOBAL DE L'ADMINISTRATION (TABLEAUX)
+   ========================================= */
+.crud-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.section-header {
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 1rem;
+}
+
+.section-header h3 {
+  color: #1e293b;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.admin-table th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.admin-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.admin-table tr:hover {
+  background-color: #f1f5f9;
+}
+
+.btn-action {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-right: 5px;
+  transition: all 0.2s;
+}
+
+.btn-edit { background-color: #fef08a; color: #854d0e; }
+.btn-edit:hover { background-color: #fde047; }
+
+.btn-delete { background-color: #fee2e2; color: #991b1b; }
+.btn-delete:hover { background-color: #fca5a5; }
+
+select {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: white;
+  color: #334155;
+  cursor: pointer;
+}
+
+/* =========================================
+   BARRE DE FILTRES ET RECHERCHE
+   ========================================= */
+.filter-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  background: #f8fafc;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-group input, .filter-group select {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* =========================================
+   BOUTON SUBMIT GLOBAL
+   ========================================= */
+.btn-submit {
+  padding: 0.875rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.btn-submit:hover { 
+  background-color: #2563eb; 
+}
+
+/* =========================================
+   EFFET ZOOM SUR LES IMAGES (BIOMÉTRIE)
+   ========================================= */
+.visage-thumbnail {
+  width: 50px;
+  height: 50px;
+  border-radius: 5px;
+  cursor: pointer;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  background-color: #f1f5f9; 
+}
+
+.visage-thumbnail.zoom {
+  transform: scale(4);
+  z-index: 100;
+  position: relative;
+  border: 2px solid #3b82f6;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}

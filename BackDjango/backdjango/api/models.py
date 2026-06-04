@@ -18,3 +18,10 @@ class Utilisateur(models.Model):
 
     def __str__(self):
         return self.email
+    
+class Visage(models.Model):
+    nom = models.CharField(max_length=255)
+    chemin_image = models.CharField(max_length=500, unique=True)
+
+    def __str__(self):
+        return self.nom

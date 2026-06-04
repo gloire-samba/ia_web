@@ -158,3 +158,15 @@
   color: #cbd5e1;
   font-weight: normal;
 }
+
+/* Bouton Dashboard Admin */
+.nav-links .btn-admin {
+  background-color: #0f172a;
+  color: white;
+}
+
+.nav-links .btn-admin:hover {
+  background-color: #1e293b;
+  color: white;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.3);
+}

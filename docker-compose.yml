@@ -20,11 +20,14 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Injecte le chemin pour le conteneur Docker
-      - DB_PATH=/app/database/iabdd
+      # 👉 LA CORRECTION EST ICI : On utilise la variable officielle de Spring
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/app/database/iabdd
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
     volumes:
       # Persistance des données Spring
       - ./spring_data:/app/database
+      # Persistance des images
+      - ./uploads:/app/uploads
 
   # 4. Le relais Python / Django
   django:
@@ -34,6 +37,7 @@ services:
       - "8000:8000"
     volumes:
       - ./BackDjango/backdjango:/app
+      - ./uploads:/app/uploads
     # 👉 AJOUTE CES DEUX LIGNES :
     env_file:
       - ./BackDjango/backdjango/.env

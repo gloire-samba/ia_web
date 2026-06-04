@@ -1,56 +1,79 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { AuthService } from '../../services/auth.service';
-import { chatService } from '../../services/chat.service';
-import './Login.css';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { authService } from '../../services/auth.service';
+import { serveurService } from '../../services/serveur.service';
+import './Login.css'; // Identique à celui d'Angular
 
-export const LoginComponent = () => {
+export const Login: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const [email, setEmail] = useState('');
+  const [motDePasse, setMotDePasse] = useState('');
   const [hidePassword, setHidePassword] = useState(true);
   const [messageErreur, setMessageErreur] = useState('');
-  
-  const [formData, setFormData] = useState({
-    email: '',
-    motDePasse: ''
-  });
 
+  // Gestion du retour OAuth2 (Social Login)
   useEffect(() => {
     const token = searchParams.get('token');
     if (token) {
       const id = searchParams.get('id') || '0';
       const role = searchParams.get('role') || 'ROLE_USER';
-      const email = searchParams.get('email') || 'social_user@ia.com';
-      const backend = searchParams.get('backend'); // 👉 On récupère l'identité du serveur
+      const userEmail = searchParams.get('email') || 'social_user@ia.com';
+      const backend = searchParams.get('backend');
 
-      AuthService.sauvegarderSession(token, role, email, id);
-      
-      // 👉 Si le serveur a déclaré son identité, on l'applique immédiatement
+      authService.sauvegarderSession(token, role, userEmail, id);
+
       if (backend === 'spring' || backend === 'django') {
-        chatService.setBackend(backend as any);
+        serveurService.setBackend(backend as any);
       }
-
-      navigate('/chat');
+      
+      // 👉 REDIRECTION INTELLIGENTE (OAUTH)
+      if (role === 'ROLE_ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/chat');
+      }
     }
   }, [searchParams, navigate]);
-  
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setMessageErreur('');
 
-    AuthService.login(formData.email, formData.motDePasse).subscribe({
-      next: () => {
+    try {
+      await authService.login(email, motDePasse);
+      
+      // 👉 REDIRECTION INTELLIGENTE (CLASSIQUE)
+      if (authService.getRole() === 'ROLE_ADMIN') {
+        navigate('/admin');
+      } else {
         navigate('/chat');
-      },
-      error: () => {
-        setMessageErreur("Identifiants incorrects.");
       }
-    });
+    } catch (error) {
+      setMessageErreur("Identifiants incorrects.");
+    }
+  };
+
+  const loginAsAdmin = async () => {
+    setEmail('admin@ia.com');
+    setMotDePasse('admin123');
+    try {
+      // On bypass le state et on envoie directement les identifiants
+      const data = await authService.login('admin@ia.com', 'admin123');
+      if (data.role === 'ROLE_ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/chat');
+      }
+    } catch (error) {
+      setMessageErreur("Identifiants incorrects.");
+    }
   };
 
   const connexionSociale = (fournisseur: 'google' | 'github') => {
-    const baseUrl = AuthService.getBaseUrl(); 
-    const backend = chatService.getCurrentBackend();
+    const baseUrl = authService.getBaseUrl();
+    const backend = serveurService.getBackend();
 
     if (backend === 'django') {
       window.location.href = `${baseUrl}/auth/${fournisseur}/login/?frontend=react`;
@@ -63,16 +86,16 @@ export const LoginComponent = () => {
     <div className="login-container">
       <div className="login-box">
         <h2>Connexion à l'IA</h2>
+        
         {messageErreur && <div className="alert error">{messageErreur}</div>}
 
-        <form onSubmit={onSubmit}>
+        <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Adresse Email</label>
             <input 
               type="email" 
-              value={formData.email} 
-              onChange={(e) => setFormData({...formData, email: e.target.value})} 
-              placeholder="utilisateur@exemple.com" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
               required 
             />
           </div>
@@ -81,24 +104,22 @@ export const LoginComponent = () => {
             <label>Mot de passe</label>
             <div className="password-wrapper">
               <input 
-                type={hidePassword ? 'password' : 'text'} 
-                value={formData.motDePasse} 
-                onChange={(e) => setFormData({...formData, motDePasse: e.target.value})} 
-                placeholder="••••••••" 
+                type={hidePassword ? "password" : "text"} 
+                value={motDePasse} 
+                onChange={e => setMotDePasse(e.target.value)} 
                 required 
               />
               <button type="button" className="btn-eye" onClick={() => setHidePassword(!hidePassword)}>
                 {hidePassword ? '👁️' : '🙈'}
               </button>
             </div>
+            
+            <button type="button" className="btn-submit" style={{ backgroundColor: '#ef4444', marginTop: '10px' }} onClick={loginAsAdmin}>
+              👑 Connexion Rapide Admin
+            </button>
           </div>
 
           <button type="submit" className="btn-submit">Se Connecter</button>
-
-          {/* 👉 LIEN RÉACTIVÉ VERS L'INSCRIPTION */}
-          <div className="toggle-mode">
-            Pas encore inscrit ? <Link to="/inscription">Créer un compte ici</Link>
-          </div>
         </form>
 
         <div className="divider"><span>OU</span></div>
@@ -106,15 +127,16 @@ export const LoginComponent = () => {
         <div className="social-login">
           <div className="social-buttons">
             <button type="button" className="btn-social google" onClick={() => connexionSociale('google')}>
-              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google"/>
               Google
             </button>
             <button type="button" className="btn-social github" onClick={() => connexionSociale('github')}>
-              <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub"/>
               GitHub
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );

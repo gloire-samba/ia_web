@@ -1,0 +1,78 @@
+.admin-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* --- SIDEBAR FIXE --- */
+.admin-sidebar {
+  width: 260px;
+  background-color: #0f172a;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  position: fixed; 
+  height: 100vh;
+  z-index: 1000;
+}
+
+.sidebar-header {
+  padding: 25px 20px;
+  background-color: #1e293b;
+  text-align: center;
+  border-bottom: 1px solid #334155;
+}
+
+.sidebar-header h2 { margin: 0; font-size: 20px; color: #f8fafc; }
+
+.sidebar-nav {
+  flex: 1;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-item {
+  color: #cbd5e1;
+  padding: 15px 25px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+}
+
+.nav-item:hover, .nav-item.actif {
+  background-color: #1e293b;
+  color: #3b82f6;
+  border-left: 4px solid #3b82f6;
+}
+
+.sidebar-footer {
+  padding: 20px;
+  background-color: #1e293b;
+}
+
+.btn-deconnexion {
+  width: 100%;
+  padding: 12px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-deconnexion:hover { background-color: #dc2626; }
+
+/* --- CONTENU CENTRAL --- */
+.admin-content {
+  flex: 1;
+  margin-left: 260px; /* Décale le contenu pour ne pas être sous la sidebar */
+  padding: 2rem;
+  background-color: #f8fafc;
+}

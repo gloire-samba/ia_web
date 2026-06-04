@@ -176,3 +176,12 @@ input:focus {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Style réactif pour le bouton de Connexion Rapide Admin */
+.btn-submit[style*="background-color: #ef4444"] {
+  transition: background-color 0.2s, transform 0.1s;
+}
+.btn-submit[style*="background-color: #ef4444"]:hover {
+  background-color: #dc2626 !important;
+  transform: scale(1.02) !important;
+}

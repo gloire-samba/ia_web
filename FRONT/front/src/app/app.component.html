@@ -26,9 +26,12 @@
         🎸 Django
     </button>
     </div>
-    
+
     <nav class="nav-links">
-    <button class="btn-logout" (click)="deconnexion()">🚪 Déconnexion</button>
+        <a *ngIf="authService.getRole() === 'ROLE_ADMIN'" routerLink="/admin" class="btn-admin">
+            🛡️ Admin Dashboard
+        </a>
+        <button class="btn-logout" (click)="deconnexion()">🚪 Déconnexion</button>
     </nav>
 </header>
   

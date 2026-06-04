@@ -1,6 +1,7 @@
 package com.iaspring.backspring.security;
 
 import java.util.Arrays;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -12,6 +13,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
@@ -34,13 +36,14 @@ public class SecurityConfig {
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Non autorisé");
                 })
             )
-            
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/login/oauth2/**", "/oauth2/**").permitAll()
+                .requestMatchers("/api/auth/login/**", "/api/auth/register", "/api/auth/init-social", "/login/oauth2/**", "/oauth2/**").permitAll()
                 
                 // L'accès au relais IA reste ouvert pour le moment
                 .requestMatchers("/api/chat/**").permitAll() 
+
+                // 👉 LA CORRECTION EST ICI : On rend le dossier des images public !
+                .requestMatchers("/uploads/**").permitAll()
 
                 // Sécurisation de l'accès au profil
                 .requestMatchers(HttpMethod.GET, "/api/utilisateurs/*").authenticated()

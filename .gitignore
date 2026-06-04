@@ -2,3 +2,4 @@
 application-secret.properties
 db.sqlite3
 iabdd.mv.db
+spring_data

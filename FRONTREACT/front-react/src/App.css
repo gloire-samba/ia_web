@@ -11,6 +11,9 @@
   min-height: 100vh;
 }
 
+/* =========================================
+   NAVIGATION ET HEADER
+   ========================================= */
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -39,7 +42,6 @@
   align-items: center;
 }
 
-/* On applique le style de base aux liens ET aux boutons pour l'homogénéité */
 .nav-links a, .nav-links button {
   text-decoration: none;
   display: inline-block;
@@ -66,19 +68,17 @@
   box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
 }
 
-/* Bouton Dashboard Admin */
-.nav-links button.btn-admin {
+.nav-links .btn-admin {
   background-color: #0f172a;
   color: white;
 }
 
-.nav-links button.btn-admin:hover {
+.nav-links .btn-admin:hover {
   background-color: #1e293b;
   color: white;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.3);
 }
 
-/* Bouton Déconnexion */
 .nav-links button.btn-logout {
   background-color: #fee2e2;
   color: #ef4444;
@@ -89,6 +89,9 @@
   color: #991b1b;
 }
 
+/* =========================================
+   CONTENU PRINCIPAL ET BADGES
+   ========================================= */
 .main-content {
   flex: 1;
   padding: 30px;
@@ -134,7 +137,6 @@
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
 }
 
-/* --- NOUVEAU : STYLE DU BADGE DE STATUT --- */
 .brand-section {
   display: flex;
   align-items: center;
@@ -157,4 +159,132 @@
 .status-badge .divider {
   color: #cbd5e1;
   font-weight: normal;
+}
+
+/* =========================================
+   STYLE GLOBAL DE L'ADMINISTRATION (TABLEAUX)
+   ========================================= */
+.crud-section {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.section-header {
+  margin-bottom: 20px;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 10px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th, .admin-table td {
+  padding: 14px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-table th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.btn-action {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  margin-right: 5px;
+  transition: opacity 0.2s;
+}
+
+.btn-action:hover { opacity: 0.8; }
+.btn-edit { background-color: #fef08a; color: #b45309; }
+.btn-delete { background-color: #fee2e2; color: #dc2626; }
+
+/* =========================================
+   BARRE DE FILTRES ET RECHERCHE
+   ========================================= */
+.filter-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  background: #f8fafc;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-group input, .filter-group select {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* =========================================
+   BOUTON SUBMIT GLOBAL
+   ========================================= */
+.btn-submit {
+  padding: 0.875rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.btn-submit:hover { 
+  background-color: #2563eb; 
+}
+
+/* =========================================
+   EFFET ZOOM SUR LES IMAGES (BIOMÉTRIE)
+   ========================================= */
+.visage-thumbnail {
+  width: 50px;
+  height: 50px;
+  border-radius: 5px;
+  cursor: pointer;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  background-color: #f1f5f9; 
+}
+
+.visage-thumbnail.zoom {
+  transform: scale(4);
+  z-index: 100;
+  position: relative;
+  border: 2px solid #3b82f6;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }

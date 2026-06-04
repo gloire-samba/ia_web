@@ -1,0 +1,48 @@
+<div class="crud-section">
+  <div class="section-header">
+    <h3>Gestion des Utilisateurs</h3>
+  </div>
+
+  <div class="filter-row">
+    <div class="filter-group">
+      <label>🔍 Recherche ID</label>
+      <input type="text" placeholder="Ex: 15" [(ngModel)]="filtreId">
+    </div>
+    <div class="filter-group">
+      <label>📧 Recherche Email</label>
+      <input type="text" placeholder="Ex: jean@mail.com" [(ngModel)]="filtreEmail">
+    </div>
+    <div class="filter-group">
+      <label>🛡️ Filtrer par Rôle</label>
+      <select [(ngModel)]="filtreRole">
+        <option value="">Tous les rôles</option>
+        <option value="ROLE_USER">Utilisateurs (USERS)</option>
+        <option value="ROLE_ADMIN">Administrateurs (ADMIN)</option>
+      </select>
+    </div>
+  </div>
+
+  <table class="admin-table">
+    <thead>
+      <tr><th>ID</th> <th>Email</th> <th>Rôle</th> <th>Actions</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let u of utilisateursFiltres">
+        <td>#{{ u.id }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          <select [(ngModel)]="u.role" (change)="changerRole(u)">
+            <option value="ROLE_USER">Utilisateur</option>
+            <option value="ROLE_ADMIN">Administrateur</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn-action btn-delete" (click)="supprimerUtilisateur(u.id)">🚫 Bannir</button>
+        </td>
+      </tr>
+      <tr *ngIf="utilisateursFiltres.length === 0">
+        <td colspan="4" style="text-align: center; padding: 20px;">Aucun utilisateur trouvé.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

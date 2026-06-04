@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { AuthService } from '../../services/auth.service';
+import { authService } from '../../services/auth.service'; // 👉 Import corrigé (minuscule)
 import './Inscription.css';
 
 export const InscriptionComponent = () => {
@@ -15,30 +15,26 @@ export const InscriptionComponent = () => {
     setHidePassword(!hidePassword);
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  // 👉 Logique React propre avec async/await (adieu .subscribe !)
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return; 
 
     setIsLoading(true);
     setMessageErreur('');
     
-    AuthService.register(formData)
-      .then(() => {
-        return new Promise<void>((resolve, reject) => {
-          AuthService.login(formData.email, formData.motDePasse).subscribe({
-            next: () => resolve(),
-            error: (err) => reject(err)
-          });
-        });
-      })
-      .then(() => {
-        setIsLoading(false);
-        navigate('/chat');
-      })
-      .catch((err) => {
-        setIsLoading(false);
-        setMessageErreur(err.message || "Erreur lors de l'inscription.");
-      });
+    try {
+      // 1. On s'inscrit
+      await authService.register(formData);
+      // 2. On se connecte automatiquement dans la foulée
+      await authService.login(formData.email, formData.motDePasse);
+      
+      setIsLoading(false);
+      navigate('/chat');
+    } catch (err: any) { // 👉 Le ': any' corrige l'erreur TS7006
+      setIsLoading(false);
+      setMessageErreur(err.message || "Erreur lors de l'inscription.");
+    }
   };
 
   return (
@@ -79,8 +75,7 @@ export const InscriptionComponent = () => {
           </div>
 
           <button type="submit" className="btn-submit" disabled={isLoading}>
-            {!isLoading && <span>S'inscrire</span>}
-            {isLoading && <span>Création en cours...</span>}
+            {!isLoading ? <span>S'inscrire</span> : <span>Création en cours...</span>}
           </button>
 
           <div className="toggle-mode">

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { AuthService } from '../services/auth.service';
+import { authService } from '../services/auth.service';
 
 export const AuthGuard: React.FC = () => {
   // Si l'utilisateur n'est pas connecté, redirection vers /login
-  if (!AuthService.isLoggedIn()) {
+  if (!authService.isLoggedIn()) {
     return <Navigate to="/login" replace />;
   }
 

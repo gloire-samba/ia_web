@@ -1,6 +1,4 @@
-import { BehaviorSubject, Observable } from 'rxjs';
-import { environment } from '../environments/environment.development';
-import { chatService } from './chat.service';
+import { serveurService } from './serveur.service';
 
 export interface LoginResponse {
   token: string;
@@ -9,100 +7,78 @@ export interface LoginResponse {
   utilisateurId: string;
 }
 
-class AuthServiceImpl {
-  private currentUserSubject: BehaviorSubject<LoginResponse | null>;
-  public currentUser$: Observable<LoginResponse | null>;
-
-  constructor() {
-    const data = sessionStorage.getItem('userSession');
-    this.currentUserSubject = new BehaviorSubject<LoginResponse | null>(data ? JSON.parse(data) : null);
-    this.currentUser$ = this.currentUserSubject.asObservable();
-  }
-
-  // Permet de dynamiquement retirer le suffixe "/chat" pour attaquer l'authentification
+class AuthService {
+  
   getBaseUrl(): string {
-    const backend = chatService.getCurrentBackend();
-    return environment.urls[backend].replace('/chat', '');
+    return serveurService.getApiUrl();
   }
 
-  login(email: string, motDePasse: string): Observable<LoginResponse> {
-    const baseUrl = this.getBaseUrl();
-    const backend = chatService.getCurrentBackend();
-    const loginUrl = backend === 'django' ? `${baseUrl}/auth/login/` : `${baseUrl}/auth/login`;
+  getUserFromStorage(): LoginResponse | null {
+    const data = sessionStorage.getItem('userSession');
+    return data ? JSON.parse(data) : null;
+  }
 
-    return new Observable<LoginResponse>(subscriber => {
-      fetch(loginUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, motDePasse })
-      })
-      .then(async response => {
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText);
-        }
-        return response.json();
-      })
-      .then((res: LoginResponse) => {
-        sessionStorage.setItem('userSession', JSON.stringify(res));
-        this.currentUserSubject.next(res);
-        subscriber.next(res);
-        subscriber.complete();
-      })
-      .catch(err => {
-        subscriber.error(err);
-      });
+  getRole(): string | null {
+    return this.getUserFromStorage()?.role || null;
+  }
+
+  getUserId(): string | null {
+    return this.getUserFromStorage()?.utilisateurId || null;
+  }
+
+  isLoggedIn(): boolean {
+    return this.getUserFromStorage() !== null;
+  }
+
+  // 👉 FONCTION AJOUTÉE ICI :
+  getToken(): string | null {
+    return this.getUserFromStorage()?.token || null;
+  }
+
+  async login(email: string, motDePasse: string): Promise<LoginResponse> {
+    const isDjango = serveurService.getBackend() === 'django';
+    const loginUrl = `${this.getBaseUrl()}/auth/login${isDjango ? '/' : ''}`;
+
+    const res = await fetch(loginUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, motDePasse })
     });
+
+    if (!res.ok) throw new Error("Identifiants incorrects");
+    
+    const data = await res.json();
+    sessionStorage.setItem('userSession', JSON.stringify(data));
+    return data;
+  }
+
+  async register(data: { email: string; motDePasse: string }) {
+    const isDjango = serveurService.getBackend() === 'django';
+    const registerUrl = isDjango 
+      ? `${this.getBaseUrl()}/auth/register/` 
+      : `${this.getBaseUrl()}/auth/register`;
+
+    const res = await fetch(registerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || "Erreur lors de l'inscription");
+    }
+    return res.json();
   }
 
   logout() {
     sessionStorage.removeItem('userSession');
-    this.currentUserSubject.next(null);
-  }
-
-  getToken(): string | null {
-    return this.currentUserSubject.value?.token || null;
-  }
-
-  isLoggedIn(): boolean {
-    return !!this.currentUserSubject.value;
+    window.location.href = '/login';
   }
 
   sauvegarderSession(token: string, role: string, email: string, utilisateurId: string) {
-    const res: LoginResponse = { token, role, email, utilisateurId };
-    sessionStorage.setItem('userSession', JSON.stringify(res));
-    this.currentUserSubject.next(res);
-  }
-
-  // 👉 NOUVELLE FONCTION MANQUANTE POUR L'INSCRIPTION
-  register(data: { email: string; motDePasse: string }): Promise<any> {
-    const baseUrl = this.getBaseUrl();
-    const backend = chatService.getCurrentBackend();
-    
-    const registerUrl = backend === 'django' 
-      ? `${baseUrl}/auth/register/` 
-      : `${baseUrl}/auth/register`;
-
-    return fetch(registerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).then(async response => {
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorObj;
-        try { 
-          // On essaie de parser l'erreur JSON renvoyée par Spring/Django
-          errorObj = JSON.parse(errorText); 
-        } catch (e) { 
-          errorObj = { message: errorText }; 
-        }
-        throw errorObj;
-      }
-      return response.json();
-    });
+    sessionStorage.setItem('userSession', JSON.stringify({ token, role, email, utilisateurId }));
   }
 }
 
-// Exportation de l'instance sous forme de Singleton pour React
-export const AuthService = new AuthServiceImpl();
+export const authService = new AuthService();

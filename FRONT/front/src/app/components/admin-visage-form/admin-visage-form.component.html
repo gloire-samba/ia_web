@@ -1,0 +1,24 @@
+<div class="login-box" style="margin: 2rem auto;">
+  <h2>{{ isEdit ? 'Modifier' : 'Ajouter' }} un Visage</h2>
+  <form (ngSubmit)="onSubmit()">
+    
+    <div class="form-group">
+      <label>Nom Complet</label>
+      <input type="text" [(ngModel)]="nom" name="nom" required>
+    </div>
+    
+    <div class="form-group" *ngIf="isEdit">
+      <label>Chemin de l'image (Base de données)</label>
+      <input type="text" [(ngModel)]="chemin" name="chemin" required>
+    </div>
+    
+    <div class="form-group" *ngIf="!isEdit">
+      <label>Photo du visage</label>
+      <input type="file" (change)="onFileSelected($event)" accept="image/png, image/jpeg" required>
+    </div>
+    
+    <button type="submit" class="btn-submit">
+      {{ isEdit ? 'Sauvegarder les modifications' : 'Sauvegarder et Synchroniser IA' }}
+    </button>
+  </form>
+</div>

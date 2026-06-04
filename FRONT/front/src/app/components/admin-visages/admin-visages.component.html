@@ -1,0 +1,47 @@
+<div class="crud-section">
+  <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <h3>Base Biométrique (FAISS)</h3>
+    <button routerLink="/admin/visages/nouveau" class="btn-submit" style="width: auto; margin:0;">➕ Ajouter Visage</button>
+  </div>
+
+  <div class="filter-row">
+    <div class="filter-group">
+      <label>🔍 Recherche ID</label>
+      <input type="text" placeholder="Ex: 5" [(ngModel)]="filtreId">
+    </div>
+    <div class="filter-group">
+      <label>👤 Nom Complet</label>
+      <input type="text" placeholder="Ex: Brad Pitt" [(ngModel)]="filtreNom">
+    </div>
+    <div class="filter-group">
+      <label>📁 Chemin / Fichier</label>
+      <input type="text" placeholder="Ex: brad_pitt.jpg" [(ngModel)]="filtreChemin">
+    </div>
+  </div>
+
+  <table class="admin-table">
+    <thead>
+      <tr><th>Photo</th> <th>ID IA</th> <th>Nom Complet</th> <th>Chemin DB</th> <th>Actions</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let v of visagesFiltres">
+        <td>
+          <img [src]="getUrlImage(v.chemin_image || v.cheminImage)" alt="Visage" 
+               class="visage-thumbnail" 
+               [class.zoom]="imageZoomee === v.id" 
+               (click)="imageZoomee = imageZoomee === v.id ? null : v.id">
+        </td>
+        <td>#{{ v.id }}</td>
+        <td>{{ v.nom }}</td>
+        <td style="font-size: 12px; color: #64748b;">{{ v.chemin_image || v.cheminImage }}</td>
+        <td>
+          <button routerLink="/admin/visages/modifier/{{v.id}}" class="btn-action btn-edit">✏️ Modifier</button>
+          <button class="btn-action btn-delete" (click)="supprimerVisage(v.id)">🗑️ Supprimer</button>
+        </td>
+      </tr>
+      <tr *ngIf="visagesFiltres.length === 0">
+        <td colspan="5" style="text-align: center; padding: 20px;">Aucun visage trouvé.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

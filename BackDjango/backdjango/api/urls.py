@@ -4,6 +4,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'utilisateurs', views.UtilisateurViewSet, basename='utilisateur')
+router.register(r'visages', views.VisageViewSet, basename='visage')
 
 urlpatterns = [
     # Le relais IA
