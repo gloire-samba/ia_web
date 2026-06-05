@@ -11,7 +11,15 @@ export const Chat: React.FC = () => {
 
   const onFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) setSelectedFile(file);
+    if (file) {
+      // 👉 NOUVEAU : Limite à 50 Mo
+      if (file.size > 50 * 1024 * 1024) {
+        alert("Le fichier est trop volumineux. Veuillez choisir un fichier de moins de 50 Mo.");
+        event.target.value = '';
+        return;
+      }
+      setSelectedFile(file);
+    }
   };
 
   const removeFile = () => setSelectedFile(null);

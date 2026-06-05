@@ -6,8 +6,7 @@
 toc::[]
 
 == 📖 Présentation du Projet
-Ce projet est une application web complète intégrant une Intelligence Artificielle générative (basée sur Gemini 2.5 Flash) capable de converser, de rechercher sur le web et de manipuler des documents bureautiques complexes (Word, Excel, PowerPoint, PDF).
-
+Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes, lire vos documents, et analyser des fichiers vidéos (audio et image).
 L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement les interfaces utilisateurs (deux clones parfaits en Angular et React), les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
 
 == Prérequis
@@ -77,7 +76,7 @@ Le projet est divisé en 5 modules indépendants orchestrés par Docker.
 == 🔑 Tutoriel : Obtenir vos Clés et Configurer les Services externes
 
 === Étape 1 : Obtenir la clé Google Gemini (Pour l'IA)
-Cette clé permet au microservice IA d'analyser vos requêtes et de transcrire l'audio.
+Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes, lire vos documents, et analyser des fichiers vidéos (audio et image).
 
 1. Allez sur https://aistudio.google.com/[Google AI Studio].
 
@@ -100,11 +99,13 @@ L'IA de notre application ne tourne pas sur votre machine, mais dans le cloud.
 
 5. Allez dans l'onglet **"Settings"** de votre Space, puis dans **"Variables and secrets"**.
 
-6. Dans la section **"Secrets"**, ajoutez une nouvelle variable :
+6. Dans la section **"Secrets"**, ajoutez les variables suivantes :
    * Name : `GOOGLE_API_KEY`
    * Value : _La clé obtenue à l'Étape 1_.
-
-7. Allez dans l'onglet **"Files"** de votre Space, et uploadez le fichier `main.py`, le fichier `requirements.txt` et le `Dockerfile` de votre dossier IA.
+   * Name : `HF_TOKEN`
+   * Value : _Votre jeton d'accès Hugging Face (disponible dans votre profil HF, nécessaire pour générer les images manga)_.
+   
+7. Allez dans l'onglet **"Files"** de votre Space, et uploadez le fichier `main.py`, le fichier `requirements.txt`, le `Dockerfile` **ainsi que tous les fichiers Python commençant par `outils_`** de votre dossier IA.
 
 8. Le Space va démarrer ("Building" puis "Running"). **Copiez l'URL de votre Space** et mettez-la à jour dans les fichiers `IaClientService.java` (Spring) et `services.py` (Django) pour que vos backends pointent vers ce nouveau cerveau.
 
@@ -146,14 +147,6 @@ Pour des raisons de sécurité, Google n'autorise plus la connexion avec votre m
    * Pour Spring : `http://localhost:8080/login/oauth2/code/github`
    * Pour Django : `http://localhost:8000/accounts/github/login/callback/`
 5. Enregistrez et générez un **Client Secret**.
-
-=== Étape 5 : Configurer Stripe (Paiements sécurisés)
-1. Créez un compte gratuit sur https://dashboard.stripe.com/[Stripe].
-2. Restez impérativement en **Mode Test** (un petit badge en haut à droite).
-3. Allez dans l'onglet **"Développeurs" > "Clés API"**.
-4. Copiez la **Clé secrète** (commençant par `sk_test_...`) et mettez-la dans vos fichiers `.env` et `.properties`.
-5. Notez également votre **Clé publique** (commençant par `pk_test_...`) et vérifiez qu'elle est bien configurée dans le fichier `paiement.component.ts` de votre projet Angular.
-
 
 == 🚀 Guide de Lancement et d'Arrêt Global
 

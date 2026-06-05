@@ -5,48 +5,78 @@
 
 toc::[]
 
-
 link:../README.adoc[⬅️ Retour à la racine du projet]
 
 == 📖 Présentation
-Ce dossier contient le cœur analytique de l'application : un Agent IA autonome exposé sous forme d'API REST grâce à `FastAPI`. 
 
-Historiquement basé sur des modèles Hugging Face purs, ce module a été entièrement réécrit pour utiliser la bibliothèque `smolagents` couplée à **Google Gemini 2.5 Flash**. Cette architecture permet à l'IA d'avoir d'excellentes capacités de raisonnement, de manipuler des fichiers bureautiques complexes, de chercher sur le web et "d'observer" des images.
+Ce dossier contient le cœur analytique et créatif de l'application : un **Agent IA autonome** exposé sous forme d'API REST grâce à `FastAPI`. 
 
-== ⚙️ Architecture & Modèles
-* **LLM Principal** : `gemini/gemini-2.5-flash` (via l'interface LiteLLM).
-* **Système de Mémoire (Embeddings / RAG)** : L'IA convertit les documents fournis en vecteurs pour les lire efficacement. Ce système intègre une redondance pour éviter les pannes :
-  ** *Plan A (Google)* : Utilise `text-embedding-004` (rapide et précis).
-  ** *Plan B (Fallback local)* : Si Google est inaccessible, le serveur bascule automatiquement sur un modèle local `HuggingFace` (`all-MiniLM-L6-v2`).
-* **Serveur / Infrastructure** : Uvicorn + FastAPI, pensé spécifiquement pour être déployé sous forme de conteneur **Docker** sur un Space Hugging Face.
+Propulsé par la bibliothèque `smolagents` (Hugging Face) et le modèle multimodal **Google Gemini 3.5 Flash**, ce back-end n'est pas un simple chatbot. C'est un véritable assistant de bureau capable de raisonner, de lire et de créer des fichiers bureautiques, d'analyser des vidéos, de reconnaître des visages, de générer des œuvres d'art et de naviguer sur le web pour combler ses lacunes.
 
-== 🛠️ Les Outils de l'Agent (Tools)
-L'agent est équipé d'outils Python qu'il sélectionne et invoque de manière autonome selon la demande de l'utilisateur :
-* `outil_rag` : Recherche des informations ciblées dans les documents fournis.
-* `convertisseur_pdf_vers_editable` : Utilise `LibreOffice` en mode "headless" pour transformer un PDF en document `.docx` ou `.xlsx`.
-* `convertisseur_editable_vers_pdf` : Transforme un fichier éditable (Word, Excel, PPT) finalisé en PDF.
-* `modificateur_docx` : Lit, comprend et modifie le contenu d'un document Word existant.
-* `modificateur_xlsx` : Interagit avec les cellules et les feuilles d'un classeur Excel.
-* `modificateur_ppt` : Traite les présentations PowerPoint (vide une diapositive cible et y injecte du nouveau texte et des images).
-* `recherche_web` : Moteur de recherche DuckDuckGo intégré pour vérifier des faits en temps réel.
+== ⚙️ Architecture & Moteurs d'Intelligence
 
-== 🔑 Prérequis, Clés API & Déploiement
-Pour éviter les répétitions et centraliser la configuration, toutes les étapes de déploiement sont expliquées à la racine du projet.
+Le cerveau s'appuie sur une combinaison de modèles spécialisés :
 
-* Vous trouverez ici le lien qui explique comment récupérer les clés API de Google :
-link:../README.adoc#étape-1--obtenir-la-clé-google-moteur-ia[🔑 Étape 1 : Obtenir la clé Google]
+* **Le Raisonnement (LLM)** : `gemini-3.5-flash` (via `smolagents`), choisi pour sa rapidité et sa capacité à orchestrer plusieurs outils de manière autonome.
+* **La Mémoire Documentaire (RAG)** : 
+  ** *Plan A (Google)* : `text-embedding-004` pour une vectorisation rapide et précise.
+  ** *Plan B (Local)* : Basculement automatique sur `sentence-transformers/all-MiniLM-L6-v2` en cas d'indisponibilité de l'API Google.
+* **La Biométrie** : Le modèle `Facenet` (via la librairie `DeepFace`) couplé à une base de données vectorielle `FAISS` pour une reconnaissance faciale instantanée.
+* **La Création Artistique** : L'API d'inférence d'Hugging Face utilisant le modèle `animagine-xl-3.1`.
 
-* Vous trouverez ici le lien qui explique comment récupérer le jeton Hugging Face :
-link:../README.adoc#étape-2--obtenir-le-jeton-hugging-face-modèle-de-mémoire[🤗 Étape 2 : Obtenir le jeton Hugging Face]
+== 📂 Structure des Fichiers et Outils de l'Agent
 
-* Vous trouverez ici le lien qui explique comment déployer le cerveau de l'IA (et où placer vos clés) :
-link:../README.adoc#étape-3--déployer-lia-et-placer-les-clés[🚀 Étape 3 : Déployer le Cerveau IA]
+L'intelligence de l'agent a été modulaire, divisée en plusieurs fichiers de "compétences" (outils) qu'il peut invoquer à la volée selon les besoins de l'utilisateur.
 
-== ⚠️ Avertissement : Limites et Quotas Gratuits
-Ce projet repose sur des API puissantes mais dans leurs versions gratuites. Vous partagez donc la puissance de calcul avec le reste de la planète.
-* **Erreur 503 (High Demand) / 429 (Quota)** : En cas de pic d'utilisation mondial, Google peut bloquer temporairement vos requêtes. Ce n'est pas un bug du code, mais une limitation du serveur de Google.
-* **Le traitement des images** : Demander à l'IA d'analyser une image demande énormément de ressources. Si les serveurs de Google sont très sollicités, les requêtes textuelles simples (ex: "Quelle est la capitale de la France ?") passeront, mais l'envoi d'images sera souvent refusé (Erreur 503).
-* _Solution_ : Réessayer quelques minutes plus tard, aux heures creuses, ou lier une carte bancaire sur Google Cloud pour débloquer les limites de la version gratuite.
+=== 1. `main.py` : Le Chef d'Orchestre
+C'est le point d'entrée de l'application. Il ne fait pas le travail lui-même, mais il distribue les tâches.
+* Initialise le serveur **FastAPI**.
+* Configure le **CodeAgent** (smolagents) en lui injectant le prompt système (Les "Règles d'Or") et la liste de tous les outils disponibles.
+* Gère les endpoints de l'API (`/api/chat`, `/api/visages/ajouter`, `/api/visages/supprimer`).
+* Crée un espace de travail temporaire isolé (`workspace_...`) pour chaque requête utilisateur afin d'éviter les conflits de fichiers.
 
----
-link:../README.adoc[⬅️ Retour à la racine du projet]
+=== 2. `outils_lecture.py` : La Vision et la Mémoire
+Permet à l'IA de lire, de voir et de mémoriser temporairement des documents.
+* `initialiser_rag` / `vider_memoire_rag` : Extrait le texte des fichiers joints (PDF, Word, PPT) et les stocke dans une base FAISS temporaire.
+* `outil_rag` : Permet à l'agent de poser des questions à sa propre mémoire documentaire.
+* `outil_vision` : Utilise les capacités multimodales natives de Gemini pour regarder une image et la décrire en détail.
+
+=== 3. `outils_ecriture.py` : La Bureautique
+Fournit à l'IA "des bras" pour manipuler des fichiers Microsoft Office et des PDF.
+* `createur_word` / `modificateur_word` : Génère ou modifie des documents `.docx`.
+* `createur_excel` / `modificateur_excel` : Construit et édite des tableurs `.xlsx`.
+* `createur_ppt` / `modificateur_ppt` : Conçoit des présentations PowerPoint (textes et images).
+* `editeur_texte_csv` : Gère les fichiers de données brutes.
+* `convertisseur_pdf_vers_editable` / `convertisseur_editable_vers_pdf` : Utilise *LibreOffice* en tâche de fond pour transformer des PDF en Word/Excel et inversement.
+
+=== 4. `outils_web_et_analyse_videos.py` : L'Ouverture sur le Monde
+* `web_search` : Connecte l'agent à Internet via DuckDuckGo. Inclut un protocole de sécurité strict ("Plan B textuel") en cas de blocage réseau.
+* `outil_analyser_video` : Utilise le SDK officiel Google GenAI pour uploader une vidéo (`.mp4`, `.avi`), laisser Gemini l'analyser (audio et vidéo), et retourner un résumé horodaté sans tomber dans le piège de la description répétitive des caméras de sécurité.
+
+=== 5. `outils_visage.py` : La Biométrie et la Sécurité
+Gère l'identité visuelle au sein de l'application.
+* `outil_ajouter_visage` / `outil_supprimer_visage` : Synchronise la base vectorielle locale de l'IA avec la base de données PostgreSQL de Spring Boot.
+* `outil_reconnaitre_visage` : Extrait les vecteurs faciaux d'une image fournie par l'utilisateur et interroge la base FAISS pour identifier la personne avec précision.
+
+=== 6. `outils_style_manga.py` : L'Atelier Artistique
+* `outil_generer_manga` : Crée une image de toutes pièces à partir d'un prompt textuel (Text-to-Image).
+* `outil_transformer_manga` : Redessine une photographie existante fournie par l'utilisateur pour lui donner un style Anime/Manga (Image-to-Image textuel).
+
+== 🚀 Déploiement et Prérequis
+
+Ce module est conçu pour être déployé sous forme de conteneur Docker (idéalement sur Hugging Face Spaces).
+
+**Variables d'Environnement requises :**
+* `GOOGLE_API_KEY` : Clé API obligatoire pour le moteur LLM Gemini, l'Embedding et l'analyse vidéo.
+* `HF_TOKEN` : Jeton d'accès (Write) pour Hugging Face, nécessaire pour l'API de génération d'images.
+
+**Dépendances Système :**
+Le `Dockerfile` installe automatiquement :
+* `libreoffice` (pour les conversions bureautiques).
+* `poppler-utils` (pour le traitement d'images PDF).
+
+== ⚠️ Avertissements et Limites (Quotas Gratuits)
+Ce projet tire parti de services cloud ultra-performants dans leurs versions gratuites. L'agent est programmé pour gérer de manière transparente la plupart de ces pannes réseau et répondre poliment à l'utilisateur :
+* **Erreur 503 (High Demand)** : Les serveurs Google sont parfois pris d'assaut. L'application intercepte ces erreurs et prévient l'utilisateur de réessayer.
+* **Erreur 429 (Quota)** : Le nombre d'appels journaliers gratuits à Gemini est limité.
+* **Génération d'images** : L'API Hugging Face peut occasionnellement rejeter la requête (délai de réponse trop long).

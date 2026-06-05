@@ -19,7 +19,7 @@ from outils_ecriture import (
     createur_ppt, modificateur_ppt, editeur_texte_csv, 
     convertisseur_pdf_vers_editable, convertisseur_editable_vers_pdf
 )
-from outils_autres import web_search
+from outils_web_et_analyse_videos import web_search, outil_analyser_video
 
 # 👉 LES NOUVEAUX IMPORTS POUR LES VISAGES
 from outils_visage import outil_ajouter_visage, outil_reconnaitre_visage, outil_supprimer_visage
@@ -46,12 +46,16 @@ model = LiteLLMModel(
 embeddings = None
 try:
     print("   👉 Tentative Google Embedding (004)...")
-    test_emb = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+    # 👉 CORRECTION : On retire le 'models/' et on injecte la clé explicitement
+    test_emb = GoogleGenerativeAIEmbeddings(
+        model="text-embedding-004", 
+        google_api_key=api_key
+    )
     test_emb.embed_query("test")
     embeddings = test_emb
     print("✅ SUCCÈS : Mode Google activé.")
 except Exception as e:
-    print(f"   ❌ Échec Google (Erreur 404/API). Passage au Plan B.")
+    print(f"   ❌ Échec Google : {e}. Passage au Plan B.")
 
 if embeddings is None:
     print("   👉 Activation du Plan B : Mémoire Locale (HuggingFace)...")
@@ -69,7 +73,7 @@ agent = CodeAgent(
         outil_rag, outil_vision, createur_word, modificateur_word, 
         createur_excel, modificateur_excel, createur_ppt, modificateur_ppt, 
         editeur_texte_csv, convertisseur_pdf_vers_editable, 
-        convertisseur_editable_vers_pdf, web_search,
+        convertisseur_editable_vers_pdf, web_search, outil_analyser_video,
         outil_reconnaitre_visage, # 👈 SEULEMENT la reconnaissance ici !
         outil_generer_manga, outil_transformer_manga # 👉 NOUVEAU : AJOUT DES OUTILS MANGA
     ],
@@ -95,6 +99,9 @@ RÈGLES D'OR V45 :
    - Si l'utilisateur demande de générer ou dessiner une image manga de toutes pièces, utilise 'outil_generer_manga'.
    - Si l'utilisateur donne une image existante et demande de la mettre en style manga, utilise 'outil_transformer_manga'.
    - SI l'utilisateur n'a pas explicitement ordonné d'utiliser ces outils, tu dois précéder ta réponse de cette phrase exacte : "Étant une IA gratuite, le résultat de la génération d'image ne va pas forcément être parfait."
+8. ANALYSE VIDÉO (NOUVEAU) :
+   - Si l'utilisateur te demande d'analyser, décrire ou résumer une vidéo, utilise OBLIGATOIREMENT l'outil 'outil_analyser_video'.
+   - Tu dois TOUJOURS précéder ta réponse d'analyse vidéo par cette phrase exacte : "⚠️ *Étant une IA gratuite, il est possible que je me trompe dans l'analyse ou que j'omette certains détails de la vidéo.*"
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
@@ -181,7 +188,18 @@ async def process_request(request: ChatRequest):
             )
 
         instruction += f"\nDemande de l'utilisateur : {request.prompt}"
-        resultat_ia = agent.run(instruction)
+        try:
+            # On tente de faire réfléchir l'agent
+            resultat_ia = agent.run(instruction)
+        except Exception as e:
+            # Si le LLM plante (surcharge Google, quota, etc.), on intercepte !
+            error_str = str(e)
+            if "503" in error_str or "high demand" in error_str or "UNAVAILABLE" in error_str:
+                resultat_ia = "⚠️ **L'IA de Google est actuellement surchargée** (Erreur 503). Les serveurs gratuits sont pris d'assaut. Veuillez réessayer dans quelques instants ! ⏳"
+            elif "429" in error_str or "quota" in error_str:
+                resultat_ia = "🛑 **Le quota gratuit de l'API Google est atteint pour aujourd'hui.**"
+            else:
+                resultat_ia = f"❌ **Une erreur est survenue dans le cerveau de l'IA :** {error_str}"
 
         out_name = None
         out_base64 = None

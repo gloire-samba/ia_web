@@ -23,6 +23,12 @@ export class ChatComponent {
   onFileSelected(event: any) {
     const file: File = event.target.files[0];
     if (file) {
+      // 👉 NOUVEAU : La barrière de sécurité de 50 Mo sans rien casser
+      if (file.size > 50 * 1024 * 1024) {
+        alert("Le fichier est trop volumineux. Veuillez choisir un fichier de moins de 50 Mo.");
+        event.target.value = ''; 
+        return; 
+      }
       this.selectedFile = file;
     }
   }
