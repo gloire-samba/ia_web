@@ -24,6 +24,9 @@ from outils_autres import web_search
 # 👉 LES NOUVEAUX IMPORTS POUR LES VISAGES
 from outils_visage import outil_ajouter_visage, outil_reconnaitre_visage, outil_supprimer_visage
 
+# 👉 NOUVEAU : IMPORT POUR LES MANGAS
+from outils_style_manga import outil_generer_manga, outil_transformer_manga
+
 
 # --- CONFIGURATION SÉCURISÉE ---
 api_key = os.environ.get("GOOGLE_API_KEY")
@@ -67,7 +70,8 @@ agent = CodeAgent(
         createur_excel, modificateur_excel, createur_ppt, modificateur_ppt, 
         editeur_texte_csv, convertisseur_pdf_vers_editable, 
         convertisseur_editable_vers_pdf, web_search,
-        outil_reconnaitre_visage # 👈 SEULEMENT la reconnaissance ici !
+        outil_reconnaitre_visage, # 👈 SEULEMENT la reconnaissance ici !
+        outil_generer_manga, outil_transformer_manga # 👉 NOUVEAU : AJOUT DES OUTILS MANGA
     ],
     model=model,
     additional_authorized_imports=imports_autorises,
@@ -87,6 +91,10 @@ RÈGLES D'OR V45 :
    - ÉTAPE C : SI TU NE RECONNAIS PAS la personne, dis-le clairement, puis propose explicitement à l'utilisateur deux options pour l'aider :
         Option 1 : Te demander de vérifier dans la base de données biométrique de l'application.
         Option 2 : Te demander de lancer une recherche sur le Web.
+7. GÉNÉRATION ET STYLE MANGA (NOUVEAU) : 
+   - Si l'utilisateur demande de générer ou dessiner une image manga de toutes pièces, utilise 'outil_generer_manga'.
+   - Si l'utilisateur donne une image existante et demande de la mettre en style manga, utilise 'outil_transformer_manga'.
+   - SI l'utilisateur n'a pas explicitement ordonné d'utiliser ces outils, tu dois précéder ta réponse de cette phrase exacte : "Étant une IA gratuite, le résultat de la génération d'image ne va pas forcément être parfait."
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 

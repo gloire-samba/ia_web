@@ -11,7 +11,10 @@
         }
 
         @if (msg.sender === 'ia' && msg.downloadUrl) {
-          <a [href]="msg.downloadUrl" [download]="msg.fileName" class="download-btn">⬇️ Télécharger {{ msg.fileName }}</a>
+          @if (msg.fileName && (msg.fileName.endsWith('.jpg') || msg.fileName.endsWith('.png'))) {
+            <img [src]="msg.downloadUrl" alt="Image générée" style="max-width: 100%; border-radius: 8px; margin-top: 10px; display: block; border: 1px solid #cbd5e1;">
+          }
+          <a [href]="msg.downloadUrl" [download]="msg.fileName" class="download-btn" style="margin-top: 10px; display: inline-block;">⬇️ Télécharger {{ msg.fileName }}</a>
         }
       </div>
     }

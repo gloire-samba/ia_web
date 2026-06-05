@@ -8,20 +8,25 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Sécurité Hugging Face : utilisateur non-root
-RUN useradd -m -u 1000 user
-USER user
-ENV PATH="/home/user/.local/bin:$PATH"
-
+# 3. Création du dossier et gestion stricte des permissions AVANT de changer d'utilisateur
 WORKDIR /app
+RUN useradd -m -u 1000 user && chown -R user:user /app
 
-# 4. On installe tes bibliothèques Python
+# 4. Sécurité Hugging Face : on devient l'utilisateur non-root
+USER user
+
+# On configure les variables d'environnement utiles pour HF
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1
+
+# 5. On installe tes bibliothèques Python
 COPY --chown=user:user requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. On copie ton fichier app.py
+# 6. On copie ton code source
 COPY --chown=user:user . .
 
-# 6. On lance ton API sur le port 7860
+# 7. On lance ton API sur le port 7860
 EXPOSE 7860
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]

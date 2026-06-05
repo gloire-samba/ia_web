@@ -82,9 +82,19 @@ export const Chat: React.FC = () => {
             )}
 
             {msg.sender === 'ia' && msg.downloadUrl && (
-              <a href={msg.downloadUrl} download={msg.fileName} className="download-btn">
-                ⬇️ Télécharger {msg.fileName}
-              </a>
+              <div style={{ marginTop: '10px' }}>
+                {/* 👉 NOUVEAU : On affiche l'image si c'est un .jpg ou .png */}
+                {(msg.fileName?.endsWith('.jpg') || msg.fileName?.endsWith('.png')) && (
+                  <img 
+                    src={msg.downloadUrl} 
+                    alt="Image générée" 
+                    style={{ maxWidth: '100%', borderRadius: '8px', display: 'block', marginBottom: '10px', border: '1px solid #cbd5e1' }} 
+                  />
+                )}
+                <a href={msg.downloadUrl} download={msg.fileName} className="download-btn">
+                  ⬇️ Télécharger {msg.fileName}
+                </a>
+              </div>
             )}
           </div>
         ))}

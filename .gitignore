@@ -1,5 +1,5 @@
 .env
 application-secret.properties
-db.sqlite3
+BackDjango/backdjango/db.sqlite3
 iabdd.mv.db
 spring_data
