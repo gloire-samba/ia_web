@@ -34,6 +34,9 @@ GOOGLE_CLIENT_SECRET=votre_secret_google_ici
 
 # --- SÉCURITÉ ---
 JWT_SECRET_KEY=mettez_une_cle_secrete_tres_longue_ici
+
+# clé secrete généré par django
+SECRET_KEY ="django-insecure-0$c%5dvu9ssccb5kd7op%^ttwxaei=y2w&ni0bspa$=d5rrp)c"
 ----
 
 === 2. Fichier `application-secret.properties` (Pour Spring Boot)
