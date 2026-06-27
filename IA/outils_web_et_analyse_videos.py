@@ -11,21 +11,19 @@ from google import genai
 def web_search(query: str) -> str:
     """
     Recherche Web (DuckDuckGo).
-
     Args:
         query: Mots-clés de la recherche.
     """
     try: 
         return DuckDuckGoSearchTool().run(query)
     except: 
+        # 👉 CORRECTION : Un message beaucoup plus simple pour éviter que l'IA ne fasse le "Perroquet"
         return (
-            "ERREUR_RESEAU_WEB_BLOQUE. Exécute EXACTEMENT ce processus dans ta réponse finale :\n"
-            "1. Explique brièvement que l'accès à Internet est bloqué temporairement.\n"
-            "2. Fais une auto-évaluation stricte : connais-tu la réponse à la question avec une CERTITUDE ABSOLUE (100%) dans ta mémoire interne ?\n"
-            "3. SI TU AS LE MOINDRE DOUTE : Ne tente pas de deviner. Dis simplement que sans accès Web, tu ne préfères pas t'avancer pour ne pas donner de fausses informations.\n"
-            "4. SI TU ES SÛR À 100% : Affiche ce message exact avec les emojis : '⚠️ **ATTENTION : Suite au blocage réseau, cette réponse est générée depuis ma mémoire interne. Étant un modèle d'IA gratuit, veuillez vérifier ces informations.** ⚠️'. Puis, fournis ta réponse détaillée et exécute la création du fichier si demandée."
+            "ÉCHEC_RESEAU. Impossible d'accéder à Internet pour le moment. "
+            "Réponds à l'utilisateur en utilisant uniquement tes connaissances internes. "
+            "Commence OBLIGATOIREMENT ta réponse par la phrase exacte : "
+            "'⚠️ **ATTENTION : Suite au blocage réseau, cette réponse est générée depuis ma mémoire interne.** ⚠️'"
         )
-
 # ==============================================================================
 # OUTILS D'ANALYSE DE VIDEOS
 # ==============================================================================
@@ -82,7 +80,7 @@ def outil_analyser_video(chemin_video: str, consigne_specifique: str = "Fais un 
 
         # 4. Génération de l'analyse
         response = client.models.generate_content(
-            model='gemini-3.5-flash',
+            model='gemini-2.5-flash',
             contents=[video_file, prompt_systeme]
         )
         
@@ -93,5 +91,3 @@ def outil_analyser_video(chemin_video: str, consigne_specifique: str = "Fais un 
 
     except Exception as e:
         return f"Erreur lors de l'analyse vidéo : {e}"
-
-# (À l'avenir, tu pourras rajouter ici d'autres outils comme un outil météo, calendrier, etc.)

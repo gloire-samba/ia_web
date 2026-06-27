@@ -4,7 +4,7 @@
     @for (msg of messages; track $index) {
       <div class="message-bubble" [ngClass]="msg.sender">
         <strong>{{ msg.sender === 'user' ? 'Vous' : 'IA Bureautique' }}</strong>
-        <p>{{ msg.text }}</p>
+        <p style="white-space: pre-wrap; margin: 0;">{{ msg.text }}</p>
         
         @if (msg.sender === 'user' && msg.fileName) {
           <div class="file-attachment">📎 {{ msg.fileName }}</div>
@@ -35,6 +35,11 @@
     }
 
     <div class="controls">
+      <button class="btn-mic" [class.recording]="isRecording" (click)="toggleRecording()" [disabled]="isLoading" title="Cliquez pour parler">
+        <span *ngIf="!isRecording">🎤</span>
+        <span *ngIf="isRecording">🛑</span>
+      </button>
+
       <input type="file" id="fileUpload" (change)="onFileSelected($event)" hidden>
       <label for="fileUpload" class="file-btn">📎 Pièce jointe</label>
 
@@ -45,7 +50,7 @@
         (keyup.enter)="sendMessage()">
       </textarea>
 
-      <button class="send-btn" (click)="sendMessage()" [disabled]="isLoading">Envoyer</button>
+      <button class="send-btn" (click)="sendMessage()" [disabled]="isLoading || isRecording">Envoyer</button>
     </div>
   </div>
 </div>

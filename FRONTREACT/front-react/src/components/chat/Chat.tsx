@@ -1,18 +1,29 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './Chat.css';
 import type { Message } from '../../models/message';
 import { chatService } from '../../services/chat.service';
+import { AudioRecorderService } from '../../services/audio-recorder.service';
 
 export const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentPrompt, setCurrentPrompt] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false); 
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const onFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // 👉 NOUVEAU : Limite à 50 Mo
       if (file.size > 50 * 1024 * 1024) {
         alert("Le fichier est trop volumineux. Veuillez choisir un fichier de moins de 50 Mo.");
         event.target.value = '';
@@ -24,19 +35,25 @@ export const Chat: React.FC = () => {
 
   const removeFile = () => setSelectedFile(null);
 
-  const sendMessage = async () => {
-    if (!currentPrompt.trim() && !selectedFile) return;
+  // 👉 CORRECTION : Accepte le texte forcé par le microphone
+  const sendMessage = async (texteForce?: string | React.MouseEvent | React.KeyboardEvent) => {
+    const texteAEnvoyer = typeof texteForce === 'string' ? texteForce : currentPrompt;
+    
+    if (!texteAEnvoyer.trim() && !selectedFile) {
+      setIsLoading(false); 
+      return;
+    }
 
     setIsLoading(true);
 
     const userMessage: Message = {
       sender: 'user',
-      text: currentPrompt,
+      text: texteAEnvoyer,
       fileName: selectedFile?.name
     };
     setMessages(prev => [...prev, userMessage]);
 
-    const request: any = { prompt: currentPrompt };
+    const request: any = { prompt: texteAEnvoyer };
     if (selectedFile) {
       request.file_name = selectedFile.name;
       request.file_base64 = await chatService.convertFileToBase64(selectedFile);
@@ -77,13 +94,54 @@ export const Chat: React.FC = () => {
     }
   };
 
+  const toggleRecording = async () => {
+    if (isRecording) {
+      setIsRecording(false);
+      setIsLoading(true);
+      try {
+        const audioBlob = await AudioRecorderService.stopRecording();
+        const formData = new FormData();
+        formData.append('fichier', audioBlob, 'audio.webm');
+
+        // 👉 On pointe directement sur le Cloud Hugging Face pour l'audio
+        const response = await fetch('https://elgronaldo-web-ia.hf.space/api/transcrire', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) throw new Error("Erreur réseau");
+        
+        const data = await response.json();
+        
+        if (data.texte && data.texte !== 'SILENCE') {
+          const nouveauTexte = currentPrompt + (currentPrompt ? ' ' : '') + data.texte;
+          setCurrentPrompt(''); 
+          await sendMessage(nouveauTexte); // 👉 L'ENVOI AUTOMATIQUE
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Erreur de transcription audio:", error);
+        alert("Erreur lors de la transcription audio.");
+        setIsLoading(false);
+      }
+    } else {
+      try {
+        await AudioRecorderService.startRecording();
+        setIsRecording(true);
+      } catch (err) {
+        alert("Impossible d'accéder au micro.");
+      }
+    }
+  };
+
   return (
     <div className="chat-container">
       <div className="messages-area">
         {messages.map((msg, index) => (
           <div key={index} className={`message-bubble ${msg.sender}`}>
             <strong>{msg.sender === 'user' ? 'Vous' : 'IA Bureautique'}</strong>
-            <p>{msg.text}</p>
+            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.text}</p>
             
             {msg.sender === 'user' && msg.fileName && (
               <div className="file-attachment">📎 {msg.fileName}</div>
@@ -91,7 +149,6 @@ export const Chat: React.FC = () => {
 
             {msg.sender === 'ia' && msg.downloadUrl && (
               <div style={{ marginTop: '10px' }}>
-                {/* 👉 NOUVEAU : On affiche l'image si c'est un .jpg ou .png */}
                 {(msg.fileName?.endsWith('.jpg') || msg.fileName?.endsWith('.png')) && (
                   <img 
                     src={msg.downloadUrl} 
@@ -112,6 +169,7 @@ export const Chat: React.FC = () => {
             <em>L'IA réfléchit (et LibreOffice mouline)...</em>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className="input-area">
@@ -123,6 +181,16 @@ export const Chat: React.FC = () => {
         )}
 
         <div className="controls">
+          <button 
+            className={`btn-mic ${isRecording ? 'recording' : ''}`} 
+            onClick={toggleRecording} 
+            disabled={isLoading} 
+            title="Cliquez pour parler"
+          >
+            {!isRecording && <span>🎤</span>}
+            {isRecording && <span>🛑</span>}
+          </button>
+
           <input type="file" id="fileUpload" onChange={onFileSelected} hidden />
           <label htmlFor="fileUpload" className="file-btn">📎 Pièce jointe</label>
 
@@ -139,7 +207,7 @@ export const Chat: React.FC = () => {
             }}
           />
 
-          <button className="send-btn" onClick={sendMessage} disabled={isLoading}>
+          <button className="send-btn" onClick={sendMessage} disabled={isLoading || isRecording}>
             Envoyer
           </button>
         </div>

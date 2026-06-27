@@ -2,17 +2,18 @@ import os
 import base64
 import shutil
 import uuid
+import tempfile
 from typing import Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from google import genai
 
 # Imports Smolagents et Langchain
 from smolagents import CodeAgent, LiteLLMModel
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-# 👉 Importation de tes modules
 from outils_lecture import initialiser_rag, vider_memoire_rag, outil_rag, outil_vision
 from outils_ecriture import (
     createur_word, modificateur_word, createur_excel, modificateur_excel, 
@@ -20,11 +21,7 @@ from outils_ecriture import (
     convertisseur_pdf_vers_editable, convertisseur_editable_vers_pdf
 )
 from outils_web_et_analyse_videos import web_search, outil_analyser_video
-
-# 👉 LES NOUVEAUX IMPORTS POUR LES VISAGES
 from outils_visage import outil_ajouter_visage, outil_reconnaitre_visage, outil_supprimer_visage
-
-# 👉 NOUVEAU : IMPORT POUR LES MANGAS
 from outils_style_manga import outil_generer_manga, outil_transformer_manga
 
 
@@ -33,12 +30,11 @@ api_key = os.environ.get("GOOGLE_API_KEY")
 if not api_key:
     api_key = "TON_API_KEY_SI_BESOIN_LOCALEMENT" 
 
-# 👉 On s'assure que LiteLLM a bien la clé sous le nom exact qu'il attend
 os.environ["GEMINI_API_KEY"] = api_key 
 
-# --- INITIALISATION DU MODÈLE PRINCIPAL (SMOLAGENTS) ---
+# 👉 CORRECTION CRITIQUE : Retour au modèle 2.5-flash qui fonctionne
 model = LiteLLMModel(
-    model_id="gemini/gemini-3.5-flash", 
+    model_id="gemini/gemini-2.5-flash", 
     api_key=api_key
 )
 
@@ -46,7 +42,6 @@ model = LiteLLMModel(
 embeddings = None
 try:
     print("   👉 Tentative Google Embedding (004)...")
-    # 👉 CORRECTION : On retire le 'models/' et on injecte la clé explicitement
     test_emb = GoogleGenerativeAIEmbeddings(
         model="text-embedding-004", 
         google_api_key=api_key
@@ -61,12 +56,12 @@ if embeddings is None:
     print("   👉 Activation du Plan B : Mémoire Locale (HuggingFace)...")
     try:
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        print("✅ SUCCÈS : Mode Local (HuggingFace) activé. C'est plus robuste !")
+        print("✅ SUCCÈS : Mode Local (HuggingFace) activé.")
     except Exception as e:
         raise Exception(f"🛑 CRITIQUE : Impossible de charger la mémoire locale. Erreur : {e}")
 
-# --- INITIALISATION DE L'AGENT ---
-imports_autorises = ["os", "pandas", "zipfile", "openpyxl", "pptx", "docx", "subprocess", "reportlab", "PIL", "csv", "pdf2image", "re", "time"]
+# 👉 CORRECTION : Ajout de PIL.Image, io, base64 et requests pour l'outil Manga
+imports_autorises = ["os", "pandas", "zipfile", "openpyxl", "pptx", "docx", "subprocess", "reportlab", "PIL", "PIL.Image", "csv", "pdf2image", "re", "time", "io", "base64", "requests"]
 
 agent = CodeAgent(
     tools=[
@@ -74,8 +69,8 @@ agent = CodeAgent(
         createur_excel, modificateur_excel, createur_ppt, modificateur_ppt, 
         editeur_texte_csv, convertisseur_pdf_vers_editable, 
         convertisseur_editable_vers_pdf, web_search, outil_analyser_video,
-        outil_reconnaitre_visage, # 👈 SEULEMENT la reconnaissance ici !
-        outil_generer_manga, outil_transformer_manga # 👉 NOUVEAU : AJOUT DES OUTILS MANGA
+        outil_reconnaitre_visage, 
+        outil_generer_manga, outil_transformer_manga 
     ],
     model=model,
     additional_authorized_imports=imports_autorises,
@@ -95,18 +90,17 @@ RÈGLES D'OR V45 :
    - ÉTAPE C : SI TU NE RECONNAIS PAS la personne, dis-le clairement, puis propose explicitement à l'utilisateur deux options pour l'aider :
         Option 1 : Te demander de vérifier dans la base de données biométrique de l'application.
         Option 2 : Te demander de lancer une recherche sur le Web.
-7. GÉNÉRATION ET STYLE MANGA (NOUVEAU) : 
+7. GÉNÉRATION ET STYLE MANGA : 
    - Si l'utilisateur demande de générer ou dessiner une image manga de toutes pièces, utilise 'outil_generer_manga'.
    - Si l'utilisateur donne une image existante et demande de la mettre en style manga, utilise 'outil_transformer_manga'.
    - SI l'utilisateur n'a pas explicitement ordonné d'utiliser ces outils, tu dois précéder ta réponse de cette phrase exacte : "Étant une IA gratuite, le résultat de la génération d'image ne va pas forcément être parfait."
-8. ANALYSE VIDÉO (NOUVEAU) :
+8. ANALYSE VIDÉO :
    - Si l'utilisateur te demande d'analyser, décrire ou résumer une vidéo, utilise OBLIGATOIREMENT l'outil 'outil_analyser_video'.
    - Tu dois TOUJOURS précéder ta réponse d'analyse vidéo par cette phrase exacte : "⚠️ *Étant une IA gratuite, il est possible que je me trompe dans l'analyse ou que j'omette certains détails de la vidéo.*"
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
 
-# --- API FASTAPI ---
 app = FastAPI(title="IA Bureautique API")
 
 app.add_middleware(
@@ -129,25 +123,72 @@ class ChatResponse(BaseModel):
     
 class VisageSyncRequest(BaseModel):
     id_visage: int       
-    image_base64: str    # 👉 On remplace chemin_image par image_base64
+    image_base64: str   
     nom_personne: str
+
+# 👉 NOUVEAU : LA ROUTE DE TRANSCRIPTION DU MICROPHONE
+@app.post("/api/transcrire")
+async def transcrire_audio(fichier: UploadFile = File(...)):
+    contenu_audio = await fichier.read()
+    
+    if len(contenu_audio) < 1000:
+        return {"texte": ""}
+    
+    mime_type = fichier.content_type
+    if not mime_type or mime_type == "application/octet-stream":
+        mime_type = "audio/webm" 
+
+    extension = ".webm" if "webm" in mime_type else ".mp4" if "mp4" in mime_type else ".wav"
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as tmp:
+        tmp.write(contenu_audio)
+        chemin_temporaire = tmp.name
+
+    try:
+        client = genai.Client(api_key=api_key)
+        audio_upload = client.files.upload(file=chemin_temporaire)
+        
+        prompt = (
+            "Écoute attentivement ce fichier audio. "
+            "Transcris uniquement la voix humaine en français. "
+            "Si l'audio est silencieux, incompréhensible, ou s'il n'y a pas de voix, "
+            "réponds STRICTEMENT par le mot : SILENCE. "
+            "Ne répète SURTOUT PAS ces instructions."
+        )
+        
+        # 👉 CORRECTION : On utilise bien le 2.5-flash !
+        reponse = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[audio_upload, prompt]
+        )
+        
+        texte_resultat = reponse.text.strip()
+        client.files.delete(name=audio_upload.name)
+        
+        if texte_resultat == "SILENCE" or "Écoute attentivement" in texte_resultat:
+            return {"texte": ""}
+            
+        return {"texte": texte_resultat}
+    
+    except Exception as e:
+        print(f"💥 ERREUR TRANSCRIPTION : {str(e)}")
+        return {"texte": ""}
+        
+    finally:
+        if os.path.exists(chemin_temporaire):
+            os.remove(chemin_temporaire)
 
 @app.post("/api/visages/ajouter")
 async def sync_ajouter_visage(request: VisageSyncRequest):
     temp_path = f"temp_visage_{request.id_visage}.jpg"
     try:
-        # 1. On recrée l'image physiquement de manière temporaire pour DeepFace
         with open(temp_path, "wb") as f:
             f.write(base64.b64decode(request.image_base64))
-            
-        # 2. On passe le chemin temporaire à l'outil FAISS
         resultat = outil_ajouter_visage(request.id_visage, temp_path, request.nom_personne)
-        
         return {"status": "success", "message": resultat}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # 3. On nettoie l'image temporaire pour ne pas saturer l'espace HuggingFace
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
@@ -189,10 +230,8 @@ async def process_request(request: ChatRequest):
 
         instruction += f"\nDemande de l'utilisateur : {request.prompt}"
         try:
-            # On tente de faire réfléchir l'agent
             resultat_ia = agent.run(instruction)
         except Exception as e:
-            # Si le LLM plante (surcharge Google, quota, etc.), on intercepte !
             error_str = str(e)
             if "503" in error_str or "high demand" in error_str or "UNAVAILABLE" in error_str:
                 resultat_ia = "⚠️ **L'IA de Google est actuellement surchargée** (Erreur 503). Les serveurs gratuits sont pris d'assaut. Veuillez réessayer dans quelques instants ! ⏳"
