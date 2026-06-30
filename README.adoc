@@ -6,7 +6,7 @@
 toc::[]
 
 == 📖 Présentation du Projet
-Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes, lire vos documents, et analyser des fichiers vidéos (audio et image).
+Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, analyser des fichiers vidéos (audio et image), et exécuter des tâches DevOps (tests et déploiement).
 L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement les interfaces utilisateurs (deux clones parfaits en Angular et React), les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
 
 == Prérequis
@@ -69,62 +69,52 @@ spring.security.oauth2.client.registration.github.scope=user:email
 Le projet est divisé en 5 modules indépendants orchestrés par Docker.
 *Cliquez sur les liens pour accéder à la documentation détaillée de chaque module.*
 
-* 🎨 link:FRONT/README.adoc[**FRONT (Angular)**] : L'interface graphique de chat originelle sur le port 4200.
-* ⚛️ link:FRONTREACT/README.adoc[**FRONTREACT (React)**] : L'interface graphique de chat alternative, développée avec Vite sur le port 5173.
+* 🎨 link:FRONT/README.adoc[**FRONT (Angular)**] : L'interface graphique de chat originelle sur le port 4200 (intègre la communication par texte et par microphone).
+* ⚛️ link:FRONTREACT/README.adoc[**FRONTREACT (React)**] : L'interface graphique de chat alternative, développée avec Vite sur le port 5173 (intègre également la communication par texte et par microphone).
 * ☕ link:BackSpring/README.adoc[**BackSpring (Java / Spring Boot)**] : Le premier serveur relais (Port 8080).
 * 🎸 link:BackDjango/README.adoc[**BackDjango (Python / Django)**] : Le second serveur relais (Port 8000).
-* 🧠 link:IA/README.adoc[**IA (Python / FastAPI)**] : Le code du cerveau IA, destiné à être hébergé sur Hugging Face.
+* 🧠 link:IA/README.adoc[**IA (Python / FastAPI)**] : Le code du cerveau IA, destiné à être hébergé sur Hugging Face. Il intègre désormais la transcription audio du micro et de puissants outils DevOps (tests unitaires et déploiement Git).
 * 🐳 **`docker-compose.yml`** : Le chef d'orchestre. Ce fichier permet de démarrer les deux interfaces et les deux relais simultanément dans des conteneurs isolés avec une seule commande.
 
 == 🔑 Tutoriel : Obtenir vos Clés et Configurer les Services externes
 
 === Étape 1 : Obtenir la clé Google Gemini (Pour l'IA)
-Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes, lire vos documents, et analyser des fichiers vidéos (audio et image).
-
+Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, et analyser des fichiers vidéos (audio et image).
 1. Allez sur https://aistudio.google.com/[Google AI Studio].
 
 2. Connectez-vous avec un compte Google.
-
 3. Cliquez sur **"Get API key"** à gauche, puis sur le bouton bleu **"Create API key"**.
-
 4. Copiez cette clé (elle commence généralement par `AIza...`). Gardez-la sous la main pour l'étape 2.
 
 === Étape 2 : Déployer le microservice IA sur Hugging Face
 L'IA de notre application ne tourne pas sur votre machine, mais dans le cloud.
-
 1. Créez un compte sur https://huggingface.co/[Hugging Face].
 
 2. En haut à droite, cliquez sur votre profil puis sur **"New Space"**.
-
 3. Donnez un nom au Space (ex: `mon-agence-ia`), choisissez la licence (ex: MIT), sélectionnez le SDK **"Docker"** (Blank), puis rendez le Space **Public**.
-
 4. Cliquez sur **"Create Space"**.
 
 5. Allez dans l'onglet **"Settings"** de votre Space, puis dans **"Variables and secrets"**.
-
 6. Dans la section **"Secrets"**, ajoutez les variables suivantes :
    * Name : `GOOGLE_API_KEY`
    * Value : _La clé obtenue à l'Étape 1_.
-   * Name : `HF_TOKEN`
+* Name : `HF_TOKEN`
    * Value : _Votre jeton d'accès Hugging Face (disponible dans votre profil HF, nécessaire pour générer les images manga)_.
-   
 7. Allez dans l'onglet **"Files"** de votre Space, et uploadez le fichier `main.py`, le fichier `requirements.txt`, le `Dockerfile` **ainsi que tous les fichiers Python commençant par `outils_`** de votre dossier IA.
-
 8. Le Space va démarrer ("Building" puis "Running"). **Copiez l'URL de votre Space** et mettez-la à jour dans les fichiers `IaClientService.java` (Spring) et `services.py` (Django) pour que vos backends pointent vers ce nouveau cerveau.
 
 === Étape 3 : Obtenir le mot de passe d'application Google (Pour envoyer les billets par E-mail)
 
-Pour des raisons de sécurité, Google n'autorise plus la connexion avec votre mot de passe habituel. Il faut créer un "mot de passe d'application".
+Pour des raisons de sécurité, Google n'autorise plus la connexion avec votre mot de passe habituel.
+Il faut créer un "mot de passe d'application".
 
 1. Allez sur les https://myaccount.google.com/security[Paramètres de sécurité de votre compte Google].
-
 2. Activez la **Validation en deux étapes** si ce n'est pas déjà fait.
-
 3. Cherchez **"Mots de passe des applications"** dans la barre de recherche des paramètres.
-
 4. Générez un mot de passe (donnez-lui le nom "Agence Voyage").
 
-5. Google va afficher un code de 16 lettres. **Copiez-le sans les espaces** et collez-le dans vos variables `EMAIL_HOST_PASSWORD` (Django) et `spring.mail.password` (Spring).
+5. Google va afficher un code de 16 lettres.
+**Copiez-le sans les espaces** et collez-le dans vos variables `EMAIL_HOST_PASSWORD` (Django) et `spring.mail.password` (Spring).
 
 === Étape 4 : Configurer la connexion avec GitHub et Google (OAuth 2.0)
 
@@ -161,23 +151,25 @@ Elle garantit que l'application fonctionnera avec les bonnes versions des langag
 **Avantage majeur : les deux interfaces et les deux serveurs relais tournent en parallèle !**
 
 **Démarrer l'application :**
-. Ouvrez un terminal à la racine absolue du projet.
-. Lancez la commande suivante (ajoutez `sudo` sous Linux si nécessaire) :
+.
+Ouvrez un terminal à la racine absolue du projet.
+.
+Lancez la commande suivante (ajoutez `sudo` sous Linux si nécessaire) :
 +
 [source,bash]
 ----
 docker compose up --build
 ----
-. Les applications sont disponibles sur :
+.
+Les applications sont disponibles sur :
   * **http://localhost:4200** pour l'interface Angular.
   * **http://localhost:5173** pour l'interface React.
-
 _Grâce à Docker, tout est allumé simultanément en arrière-plan. Vous pouvez basculer d'une interface à l'autre et interroger Spring Boot ou Django en temps réel !_
 
 **Arrêter l'application :**
-. Allez dans le terminal où défilent les logs.
+.
+Allez dans le terminal où défilent les logs.
 . Appuyez sur **`Ctrl + C`** pour éteindre tous les serveurs en douceur, puis tapez la commande `docker compose down -v` pour supprimer les volumes et les réseaux.
-
 ---
 
 === Méthode 2 : Lancement Manuel (Développement)

@@ -11,7 +11,7 @@ link:../README.adoc[⬅️ Retour à la racine du projet]
 
 Ce dossier contient le cœur analytique et créatif de l'application : un **Agent IA autonome** exposé sous forme d'API REST grâce à `FastAPI`. 
 
-Propulsé par la bibliothèque `smolagents` (Hugging Face) et le modèle multimodal **Google Gemini 3.5 Flash**, ce back-end n'est pas un simple chatbot. C'est un véritable assistant de bureau capable de raisonner, de lire et de créer des fichiers bureautiques, d'analyser des vidéos, de reconnaître des visages, de générer des œuvres d'art et de naviguer sur le web pour combler ses lacunes.
+Propulsé par la bibliothèque `smolagents` (Hugging Face) et le modèle multimodal **Google Gemini 3.5 Flash**, ce back-end n'est pas un simple chatbot. C'est un véritable assistant de bureau capable de raisonner, de transcrire la voix (microphone), de lire et de créer des fichiers bureautiques, d'analyser des vidéos, de reconnaître des visages, de générer des œuvres d'art, de tester et déployer du code (DevOps), et de naviguer sur le web pour combler ses lacunes.
 
 == ⚙️ Architecture & Moteurs d'Intelligence
 
@@ -32,52 +32,46 @@ L'intelligence de l'agent a été modulaire, divisée en plusieurs fichiers de "
 C'est le point d'entrée de l'application. Il ne fait pas le travail lui-même, mais il distribue les tâches.
 
 * Initialise le serveur **FastAPI**.
-
 * Configure le **CodeAgent** (smolagents) en lui injectant le prompt système (Les "Règles d'Or") et la liste de tous les outils disponibles.
-
-* Gère les endpoints de l'API (`/api/chat`, `/api/visages/ajouter`, `/api/visages/supprimer`).
-
+* Gère les endpoints de l'API (`/api/chat`, `/api/transcrire` pour le microphone, `/api/visages/ajouter`, `/api/visages/supprimer`).
 * Crée un espace de travail temporaire isolé (`workspace_...`) pour chaque requête utilisateur afin d'éviter les conflits de fichiers.
 
 === 2. `outils_lecture.py` : La Vision et la Mémoire
 Permet à l'IA de lire, de voir et de mémoriser temporairement des documents.
 
 * `initialiser_rag` / `vider_memoire_rag` : Extrait le texte des fichiers joints (PDF, Word, PPT) et les stocke dans une base FAISS temporaire.
-
 * `outil_rag` : Permet à l'agent de poser des questions à sa propre mémoire documentaire.
-
 * `outil_vision` : Utilise les capacités multimodales natives de Gemini pour regarder une image et la décrire en détail.
 
 === 3. `outils_ecriture.py` : La Bureautique
 Fournit à l'IA "des bras" pour manipuler des fichiers Microsoft Office et des PDF.
 
 * `createur_word` / `modificateur_word` : Génère ou modifie des documents `.docx`.
-
 * `createur_excel` / `modificateur_excel` : Construit et édite des tableurs `.xlsx`.
-
 * `createur_ppt` / `modificateur_ppt` : Conçoit des présentations PowerPoint (textes et images).
-
 * `editeur_texte_csv` : Gère les fichiers de données brutes.
-
 * `convertisseur_pdf_vers_editable` / `convertisseur_editable_vers_pdf` : Utilise *LibreOffice* en tâche de fond pour transformer des PDF en Word/Excel et inversement.
 
 === 4. `outils_web_et_analyse_videos.py` : L'Ouverture sur le Monde
 * `web_search` : Connecte l'agent à Internet via DuckDuckGo. Inclut un protocole de sécurité strict ("Plan B textuel") en cas de blocage réseau.
-
 * `outil_analyser_video` : Utilise le SDK officiel Google GenAI pour uploader une vidéo (`.mp4`, `.avi`), laisser Gemini l'analyser (audio et vidéo), et retourner un résumé horodaté sans tomber dans le piège de la description répétitive des caméras de sécurité.
 
 === 5. `outils_visage.py` : La Biométrie et la Sécurité
 Gère l'identité visuelle au sein de l'application.
 
 * `outil_ajouter_visage` / `outil_supprimer_visage` : Synchronise la base vectorielle locale de l'IA avec la base de données PostgreSQL de Spring Boot.
-
 * `outil_reconnaitre_visage` : Extrait les vecteurs faciaux d'une image fournie par l'utilisateur et interroge la base FAISS pour identifier la personne avec précision.
 
 === 6. `outils_style_manga.py` : L'Atelier Artistique
 
 * `outil_generer_manga` : Crée une image de toutes pièces à partir d'un prompt textuel (Text-to-Image).
-
 * `outil_transformer_manga` : Redessine une photographie existante fournie par l'utilisateur pour lui donner un style Anime/Manga (Image-to-Image textuel).
+
+=== 7. `outils_developpement.py` : L'Ingénieur DevOps & QA
+Équipe l'IA de capacités d'intégration continue et de tests automatisés.
+
+* `outil_executer_commande_terminal` : Permet à l'agent d'exécuter des tests unitaires (ex: `pytest` ou `vitest`) directement dans son environnement de travail.
+* `outil_git_commit_et_push` : Initialise, crée des commits avec horodatage et déploie automatiquement le code ou les rapports d'erreurs (PDF) sur un dépôt Git distant.
 
 == 🚀 Déploiement et Prérequis
 
@@ -86,22 +80,19 @@ Ce module est conçu pour être déployé sous forme de conteneur Docker (idéal
 **Variables d'Environnement requises :**
 
 * `GOOGLE_API_KEY` : Clé API obligatoire pour le moteur LLM Gemini, l'Embedding et l'analyse vidéo.
-
 * `HF_TOKEN` : Jeton d'accès (Write) pour Hugging Face, nécessaire pour l'API de génération d'images.
 
 **Dépendances Système :**
 
 Le `Dockerfile` installe automatiquement :
 * `libreoffice` (pour les conversions bureautiques).
-
 * `poppler-utils` (pour le traitement d'images PDF).
+* `nodejs` et `npm` (pour l'exécution des tests React/Vitest).
 
 == ⚠️ Avertissements et Limites (Quotas Gratuits)
 
 Ce projet tire parti de services cloud ultra-performants dans leurs versions gratuites. L'agent est programmé pour gérer de manière transparente la plupart de ces pannes réseau et répondre poliment à l'utilisateur :
 
 * **Erreur 503 (High Demand)** : Les serveurs Google sont parfois pris d'assaut. L'application intercepte ces erreurs et prévient l'utilisateur de réessayer.
-
 * **Erreur 429 (Quota)** : Le nombre d'appels journaliers gratuits à Gemini est limité.
-
 * **Génération d'images** : L'API Hugging Face peut occasionnellement rejeter la requête (délai de réponse trop long).
