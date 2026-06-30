@@ -33,9 +33,9 @@ if not api_key:
 
 os.environ["GEMINI_API_KEY"] = api_key 
 
-# 👉 CORRECTION CRITIQUE : Retour au modèle 2.5-flash qui fonctionne
+# 👉 CORRECTION CRITIQUE : Retour au modèle 3.5-flash qui fonctionne
 model = LiteLLMModel(
-    model_id="gemini/gemini-2.5-flash", 
+    model_id="gemini/gemini-3.5-flash", 
     api_key=api_key
 )
 
@@ -111,6 +111,9 @@ RÈGLES D'OR V45 :
         3. Crée un document Word ('createur_word') avec le rapport d'erreur complet, puis convertis-le en PDF ('convertisseur_editable_vers_pdf').
         4. Envoie ce message exact à l'utilisateur : "Il y a ces tests qui n'ont pas marché : [Liste des tests]. Vous trouverez les explications plus en détails dans ce rapport PDF."
         5. Utilise 'outil_git_commit_et_push' pour envoyer le code défectueux ET le rapport PDF sur le dépôt Git.
+10. AUTONOMIE ET CONNAISSANCES PERSONNELLES : 
+   - Si l'utilisateur pose une question qui ne nécessite l'utilisation d'aucun outil, OU si l'accès à un outil échoue pour des raisons techniques, tu dois immédiatement faire appel à tes propres connaissances pour fournir une réponse complète.
+   - Dans ce cas précis, tu dois OBLIGATOIREMENT débuter ta réponse par : "⚠️ **Je vous réponds en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️"
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
@@ -170,9 +173,9 @@ async def transcrire_audio(fichier: UploadFile = File(...)):
             "Ne répète SURTOUT PAS ces instructions."
         )
         
-        # 👉 CORRECTION : On utilise bien le 2.5-flash !
+        # 👉 CORRECTION : On utilise bien le 3.5-flash !
         reponse = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.5-flash',
             contents=[audio_upload, prompt]
         )
         

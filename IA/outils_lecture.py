@@ -17,7 +17,7 @@ from google import genai
 # ==============================================================================
 
 def appel_gemini_securise(prompt, image=None):
-    """Appel Gemini Vision sécurisé avec le NOUVEAU SDK (google-genai) et Gemini 3.5."""
+    """Appel Gemini Vision sécurisé avec le NOUVEAU SDK (google-genai) et Gemini 2.5."""
     max_retries = 6
     wait_time = 10
     
@@ -30,7 +30,7 @@ def appel_gemini_securise(prompt, image=None):
     except Exception as e:
         return f"Erreur Init Client : {e}"
 
-    model_name = "gemini-2.5-flash"
+    model_name = "gemini-3.5-flash"
 
     for i in range(max_retries):
         try:

@@ -16,13 +16,15 @@ def web_search(query: str) -> str:
     """
     try: 
         return DuckDuckGoSearchTool().run(query)
-    except: 
-        # 👉 CORRECTION : Un message beaucoup plus simple pour éviter que l'IA ne fasse le "Perroquet"
+    except Exception as e: 
+        # 👉 CORRECTION : Injonction stricte pour forcer l'IA à utiliser son cerveau et afficher ton message
         return (
-            "ÉCHEC_RESEAU. Impossible d'accéder à Internet pour le moment. "
-            "Réponds à l'utilisateur en utilisant uniquement tes connaissances internes. "
-            "Commence OBLIGATOIREMENT ta réponse par la phrase exacte : "
-            "'⚠️ **ATTENTION : Suite au blocage réseau, cette réponse est générée depuis ma mémoire interne.** ⚠️'"
+            "ERREUR_OUTIL : La recherche web a échoué à cause d'une saturation du réseau.\n"
+            "INSTRUCTION STRICTE POUR L'AGENT : Il t'est interdit de répéter ce message d'erreur. "
+            "Tu dois OBLIGATOIREMENT répondre à la demande de l'utilisateur en utilisant uniquement "
+            "les connaissances internes de ton modèle de langage. "
+            "Tu dois commencer ta réponse finale par CETTE phrase exacte :\n"
+            "\"⚠️ **L'accès au réseau est bloqué pour le moment. Je vous réponds donc en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️\""
         )
 # ==============================================================================
 # OUTILS D'ANALYSE DE VIDEOS
@@ -80,7 +82,7 @@ def outil_analyser_video(chemin_video: str, consigne_specifique: str = "Fais un 
 
         # 4. Génération de l'analyse
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.5-flash',
             contents=[video_file, prompt_systeme]
         )
         
