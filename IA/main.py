@@ -23,6 +23,7 @@ from outils_ecriture import (
 from outils_web_et_analyse_videos import web_search, outil_analyser_video
 from outils_visage import outil_ajouter_visage, outil_reconnaitre_visage, outil_supprimer_visage
 from outils_style_manga import outil_generer_manga, outil_transformer_manga
+from outils_developpement import outil_executer_commande_terminal, outil_git_commit_et_push
 
 
 # --- CONFIGURATION SÉCURISÉE ---
@@ -70,7 +71,8 @@ agent = CodeAgent(
         editeur_texte_csv, convertisseur_pdf_vers_editable, 
         convertisseur_editable_vers_pdf, web_search, outil_analyser_video,
         outil_reconnaitre_visage, 
-        outil_generer_manga, outil_transformer_manga 
+        outil_generer_manga, outil_transformer_manga,
+        outil_executer_commande_terminal, outil_git_commit_et_push 
     ],
     model=model,
     additional_authorized_imports=imports_autorises,
@@ -97,6 +99,18 @@ RÈGLES D'OR V45 :
 8. ANALYSE VIDÉO :
    - Si l'utilisateur te demande d'analyser, décrire ou résumer une vidéo, utilise OBLIGATOIREMENT l'outil 'outil_analyser_video'.
    - Tu dois TOUJOURS précéder ta réponse d'analyse vidéo par cette phrase exacte : "⚠️ *Étant une IA gratuite, il est possible que je me trompe dans l'analyse ou que j'omette certains détails de la vidéo.*"
+   
+9. TESTS UNITAIRES ET DÉPLOIEMENT GIT (RÈGLE STRICTE) :
+   - ENVIRONNEMENT : Ton serveur possède Python (pytest) et Node.js avec Vitest/React déjà installés GLOBALEMENT. N'installe RIEN toi-même. Si l'utilisateur demande Java, C++, ou Rust, refuse poliment.
+   - MÉTHODOLOGIE REACT : Ne crée JAMAIS de package.json et ne fais JAMAIS de 'npm install'. Crée simplement tes fichiers (.jsx et .test.jsx) et lance le test via le terminal avec cette commande exacte : 'vitest run nom_du_fichier.test.jsx --environment jsdom'.
+   - MÉTHODOLOGIE PYTHON : Utilise simplement 'pytest nom_du_fichier.py' via l'outil terminal.
+   - SI TOUS LES TESTS RÉUSSISSENT : Envoie un message disant que tous les tests sont passés avec succès. Puis utilise 'outil_git_commit_et_push' (si demandé).
+   - SI UN OU PLUSIEURS TESTS ÉCHOUENT : 
+        1. NE CORRIGE SURTOUT PAS LE CODE.
+        2. Extrait l'erreur en anglais et traduis/explique ce qui n'a pas marché en français.
+        3. Crée un document Word ('createur_word') avec le rapport d'erreur complet, puis convertis-le en PDF ('convertisseur_editable_vers_pdf').
+        4. Envoie ce message exact à l'utilisateur : "Il y a ces tests qui n'ont pas marché : [Liste des tests]. Vous trouverez les explications plus en détails dans ce rapport PDF."
+        5. Utilise 'outil_git_commit_et_push' pour envoyer le code défectueux ET le rapport PDF sur le dépôt Git.
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
