@@ -33,7 +33,7 @@ if not api_key:
 
 os.environ["GEMINI_API_KEY"] = api_key 
 
-# 👉 CORRECTION CRITIQUE : Retour au modèle 3.5-flash qui fonctionne
+# 👉 Retour au modèle 3.5-flash qui fonctionne
 model = LiteLLMModel(
     model_id="gemini/gemini-3.5-flash", 
     api_key=api_key
@@ -61,7 +61,6 @@ if embeddings is None:
     except Exception as e:
         raise Exception(f"🛑 CRITIQUE : Impossible de charger la mémoire locale. Erreur : {e}")
 
-# 👉 CORRECTION : Ajout de PIL.Image, io, base64 et requests pour l'outil Manga
 imports_autorises = ["os", "pandas", "zipfile", "openpyxl", "pptx", "docx", "subprocess", "reportlab", "PIL", "PIL.Image", "csv", "pdf2image", "re", "time", "io", "base64", "requests"]
 
 agent = CodeAgent(
@@ -80,7 +79,7 @@ agent = CodeAgent(
 )
 
 consigne = """
-RÈGLES D'OR V45 :
+RÈGLES D'OR V46 :
 1. ANALYSE LA DEMANDE : Word? Excel? PPT? TXT?
 2. MODIF PPT : Utilise 'modificateur_ppt'. Il vide la slide et la recrée proprement avec le contenu final (Image + Texte + Overflow).
 3. MODIF PDF : Convertis (docx/xlsx) -> Modifie -> Reconvertis.
@@ -100,17 +99,12 @@ RÈGLES D'OR V45 :
    - Si l'utilisateur te demande d'analyser, décrire ou résumer une vidéo, utilise OBLIGATOIREMENT l'outil 'outil_analyser_video'.
    - Tu dois TOUJOURS précéder ta réponse d'analyse vidéo par cette phrase exacte : "⚠️ *Étant une IA gratuite, il est possible que je me trompe dans l'analyse ou que j'omette certains détails de la vidéo.*"
    
-9. TESTS UNITAIRES ET DÉPLOIEMENT GIT (RÈGLE STRICTE) :
-   - ENVIRONNEMENT : Ton serveur possède Python (pytest) et Node.js avec Vitest/React déjà installés GLOBALEMENT. N'installe RIEN toi-même. Si l'utilisateur demande Java, C++, ou Rust, refuse poliment.
-   - MÉTHODOLOGIE REACT : Ne crée JAMAIS de package.json et ne fais JAMAIS de 'npm install'. Crée simplement tes fichiers (.jsx et .test.jsx) et lance le test via le terminal avec cette commande exacte : 'vitest run nom_du_fichier.test.jsx --environment jsdom'.
-   - MÉTHODOLOGIE PYTHON : Utilise simplement 'pytest nom_du_fichier.py' via l'outil terminal.
-   - SI TOUS LES TESTS RÉUSSISSENT : Envoie un message disant que tous les tests sont passés avec succès. Puis utilise 'outil_git_commit_et_push' (si demandé).
-   - SI UN OU PLUSIEURS TESTS ÉCHOUENT : 
-        1. NE CORRIGE SURTOUT PAS LE CODE.
-        2. Extrait l'erreur en anglais et traduis/explique ce qui n'a pas marché en français.
-        3. Crée un document Word ('createur_word') avec le rapport d'erreur complet, puis convertis-le en PDF ('convertisseur_editable_vers_pdf').
-        4. Envoie ce message exact à l'utilisateur : "Il y a ces tests qui n'ont pas marché : [Liste des tests]. Vous trouverez les explications plus en détails dans ce rapport PDF."
-        5. Utilise 'outil_git_commit_et_push' pour envoyer le code défectueux ET le rapport PDF sur le dépôt Git.
+9. TESTS UNITAIRES ET DÉPLOIEMENT GIT (RÈGLE STRICTE CI/CD) :
+   - RÔLE DE L'IA : Tu es un développeur. Ton rôle est de rédiger le code propre ET de générer les fichiers de tests unitaires complets correspondant au langage (ex: fichiers .py pour pytest, .test.jsx pour React, .spec.ts pour Angular, .java pour JUnit...).
+   - INTERDICTION D'EXÉCUTION LOCALE : Il t'est STRICTEMENT INTERDIT d'exécuter les tests unitaires toi-même via le terminal (ne lance jamais pytest, vitest, jest, etc.). L'exécution des tests est déléguée au serveur de CI/CD distant (GitLab Testing / GitHub Actions).
+   - DÉPLOIEMENT : Une fois les fichiers de code et de tests créés dans ton dossier de travail, utilise OBLIGATOIREMENT l'outil 'outil_git_commit_et_push' pour envoyer tout le travail sur le dépôt Git de l'utilisateur. L'outil organisera automatiquement les tests dans un dossier dédié.
+   - RÉPONSE FINALE : Réponds à l'utilisateur en lui confirmant que le code et les tests unitaires ont été générés et poussés sur Git, et précise-lui explicitement : "🚀 *Le code et les tests ont été envoyés sur votre dépôt. Votre pipeline CI/CD (GitLab Testing / GitHub Actions) va maintenant prendre le relais pour exécuter les tests automatiquement dans le Cloud !*"
+
 10. AUTONOMIE ET CONNAISSANCES PERSONNELLES : 
    - Si l'utilisateur pose une question qui ne nécessite l'utilisation d'aucun outil, OU si l'accès à un outil échoue pour des raisons techniques, tu dois immédiatement faire appel à tes propres connaissances pour fournir une réponse complète.
    - Dans ce cas précis, tu dois OBLIGATOIREMENT débuter ta réponse par : "⚠️ **Je vous réponds en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️"
@@ -143,7 +137,7 @@ class VisageSyncRequest(BaseModel):
     image_base64: str   
     nom_personne: str
 
-# 👉 NOUVEAU : LA ROUTE DE TRANSCRIPTION DU MICROPHONE
+# LA ROUTE DE TRANSCRIPTION DU MICROPHONE
 @app.post("/api/transcrire")
 async def transcrire_audio(fichier: UploadFile = File(...)):
     contenu_audio = await fichier.read()
@@ -173,7 +167,6 @@ async def transcrire_audio(fichier: UploadFile = File(...)):
             "Ne répète SURTOUT PAS ces instructions."
         )
         
-        # 👉 CORRECTION : On utilise bien le 3.5-flash !
         reponse = client.models.generate_content(
             model='gemini-3.5-flash',
             contents=[audio_upload, prompt]

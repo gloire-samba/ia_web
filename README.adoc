@@ -81,7 +81,6 @@ Le projet est divisé en 5 modules indépendants orchestrés par Docker.
 === Étape 1 : Obtenir la clé Google Gemini (Pour l'IA)
 Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, et analyser des fichiers vidéos (audio et image).
 1. Allez sur https://aistudio.google.com/[Google AI Studio].
-
 2. Connectez-vous avec un compte Google.
 3. Cliquez sur **"Get API key"** à gauche, puis sur le bouton bleu **"Create API key"**.
 4. Copiez cette clé (elle commence généralement par `AIza...`). Gardez-la sous la main pour l'étape 2.
@@ -89,16 +88,14 @@ Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser v
 === Étape 2 : Déployer le microservice IA sur Hugging Face
 L'IA de notre application ne tourne pas sur votre machine, mais dans le cloud.
 1. Créez un compte sur https://huggingface.co/[Hugging Face].
-
 2. En haut à droite, cliquez sur votre profil puis sur **"New Space"**.
 3. Donnez un nom au Space (ex: `mon-agence-ia`), choisissez la licence (ex: MIT), sélectionnez le SDK **"Docker"** (Blank), puis rendez le Space **Public**.
 4. Cliquez sur **"Create Space"**.
-
 5. Allez dans l'onglet **"Settings"** de votre Space, puis dans **"Variables and secrets"**.
 6. Dans la section **"Secrets"**, ajoutez les variables suivantes :
    * Name : `GOOGLE_API_KEY`
    * Value : _La clé obtenue à l'Étape 1_.
-* Name : `HF_TOKEN`
+   * Name : `HF_TOKEN`
    * Value : _Votre jeton d'accès Hugging Face (disponible dans votre profil HF, nécessaire pour générer les images manga)_.
 7. Allez dans l'onglet **"Files"** de votre Space, et uploadez le fichier `main.py`, le fichier `requirements.txt`, le `Dockerfile` **ainsi que tous les fichiers Python commençant par `outils_`** de votre dossier IA.
 8. Le Space va démarrer ("Building" puis "Running"). **Copiez l'URL de votre Space** et mettez-la à jour dans les fichiers `IaClientService.java` (Spring) et `services.py` (Django) pour que vos backends pointent vers ce nouveau cerveau.
@@ -112,7 +109,6 @@ Il faut créer un "mot de passe d'application".
 2. Activez la **Validation en deux étapes** si ce n'est pas déjà fait.
 3. Cherchez **"Mots de passe des applications"** dans la barre de recherche des paramètres.
 4. Générez un mot de passe (donnez-lui le nom "Agence Voyage").
-
 5. Google va afficher un code de 16 lettres.
 **Copiez-le sans les espaces** et collez-le dans vos variables `EMAIL_HOST_PASSWORD` (Django) et `spring.mail.password` (Spring).
 
@@ -140,6 +136,50 @@ Il faut créer un "mot de passe d'application".
    * Pour Spring : `http://localhost:8080/login/oauth2/code/github`
    * Pour Django : `http://localhost:8000/accounts/github/login/callback/`
 5. Enregistrez et générez un **Client Secret**.
+
+=== Étape 5 : Obtenir un Jeton d'Accès GitHub (Pour le Déploiement CI/CD par l'IA)
+
+Pour que l'IA puisse utiliser ses capacités DevOps (`outils_developpement`) et pousser automatiquement du code et des tests sur votre dépôt pour déclencher votre pipeline CI/CD, vous ne pouvez pas lui donner un lien classique (ex: `https://github.com/gloire-samba/ia_web.git`). 
+Depuis plusieurs années, GitHub et GitLab interdisent la connexion avec un mot de passe classique pour des raisons de sécurité. Il faut obligatoirement utiliser un **Jeton d'Accès Personnel (Personal Access Token ou PAT)**.
+
+Voici comment l'obtenir et l'assembler dans l'URL en 1 minute :
+
+==== Étape A : Générer le Token sur GitHub
+1. Connectez-vous sur votre compte GitHub, cliquez sur votre photo de profil en haut à droite, puis sur **Settings** (Paramètres).
+2. Dans le menu de gauche, descendez tout en bas et cliquez sur **Developer settings** (Paramètres développeur).
+3. Cliquez sur **Personal access tokens**, puis sélectionnez **Tokens (classic)**.
+4. Cliquez sur le bouton **Generate new token** -> **Generate new token (classic)**.
+5. Dans le champ **Note**, donnez-lui un nom pour vous en rappeler (ex: `Agent IA DevOps`).
+6. Dans la liste des cases à cocher en dessous, **cochez impérativement la case principale `repo`** (cela donne le droit au jeton d'écrire et de pousser du code dans vos dépôts).
+7. Descendez tout en bas de la page et cliquez sur le bouton vert **Generate token**.
+8. GitHub va afficher une longue suite de lettres et chiffres commençant par `ghp_...` (ou `github_pat_...`). **Copiez immédiatement cette clé**, car elle ne sera plus jamais affichée ensuite !
+
+==== Étape B : Comment construire votre lien d'appel ?
+Pour que Git et l'IA puissent s'authentifier automatiquement en ligne de commande sans ouvrir de fenêtre interactive, la syntaxe officielle consiste à insérer le jeton juste après le `https://` et juste avant le `@github.com` :
+
+[source,text]
+----
+https://TON_TOKEN@github.com/ton-pseudo/ton-depot.git
+----
+
+**Exemple concret :**
+* Si votre lien classique est : `https://github.com/gloire-samba/ia_web.git`
+* Et que le jeton généré par GitHub est : `ghp_88XxYyZz112233445566778899AAbbcc`
+* **Le lien exact que vous devez envoyer dans le chat à votre IA sera :**
++
+[source,text]
+----
+https://ghp_88XxYyZz112233445566778899AAbbcc@github.com/gloire-samba/ia_web.git
+----
+_(Note : Pour GitLab, le principe est exactement le même : vous générez un "Access Token" dans les paramètres de votre profil GitLab commençant par `glpat-...`, et vous l'insérez sous la forme `https://glpat-xxxxxx@gitlab.com/...`)._
+
+==== 🧪 Exemple de requête pour tester le déploiement par l'IA
+Pour tester la capacité de votre IA à écrire du code, générer des tests unitaires et pousser le tout sur votre dépôt pour déclencher automatiquement l'exécution des tests dans le Cloud via votre pipeline CI/CD, envoyez-lui cette commande dans l'interface de chat (en remplaçant `MON_TOKEN_GITHUB` par votre véritable clé) :
+
+[source,text]
+----
+Agis comme un ingénieur logiciel. Écris un fichier Python calculatrice.py qui contient une fonction d'addition et de division sécurisée (qui gère la division par zéro). Ensuite, génère le fichier de test unitaire pytest test_calculatrice.py complet pour tester cette fonction. Ne lance pas les tests toi-même, mais utilise ton outil Git pour pousser tout le code sur mon dépôt : https://MON_TOKEN_GITHUB@github.com/gloire-samba/ia_web.git sur la branche main.
+----
 
 == 🚀 Guide de Lancement et d'Arrêt Global
 
