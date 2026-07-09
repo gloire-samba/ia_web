@@ -34,13 +34,15 @@ def outil_executer_commande_terminal(commande: str, chemin_dossier: str = ".") -
         return f"Erreur lors de l'exécution de la commande : {e}"
 
 @tool
-def outil_git_commit_et_push(chemin_dossier: str, url_depot: str, branche: str = "main", message_personnalise: str = "Mise à jour automatique CI/CD") -> str:
+def outil_git_commit_et_push(chemin_dossier: str, url_depot: str, nom_sous_dossier: str = "general", branche: str = "main", message_personnalise: str = "Mise à jour automatique CI/CD") -> str:
     """
-    Crée le dossier 'test_ia' s'il n'existe pas, y déplace UNIQUEMENT les nouveaux tests et rapports créés par l'IA, génère automatiquement un fichier de pipeline CI/CD s'il n'existe pas, crée un .gitignore, et pousse le code vers le dépôt.
+    Renge TOUS les fichiers de code, de test et de rapport dans un sous-dossier dédié 'test_ia/<nom_sous_dossier>/',
+    génère automatiquement un fichier de pipeline CI/CD s'il n'existe pas, crée un .gitignore, et pousse le code vers le dépôt.
     
     Args:
         chemin_dossier: Le chemin absolu du dossier de travail de l'agent.
         url_depot: L'URL du dépôt distant contenant le token d'authentification (obligatoire).
+        nom_sous_dossier: Un nom de sous-dossier court et pertinent déduit par l'IA selon le sujet (ex: 'calculatrice', 'authentification', 'facturation').
         branche: Le nom de la branche (par défaut 'main').
         message_personnalise: Un petit message contextuel à ajouter au commit.
     """
@@ -50,35 +52,19 @@ def outil_git_commit_et_push(chemin_dossier: str, url_depot: str, branche: str =
             
         os.chdir(chemin_dossier)
         
-        # 1. 👉 CRITIQUE : Création de 'test_ia/' et déplacement EXCLUSIF des nouveaux fichiers de l'IA
-        dossier_tests = os.path.join(chemin_dossier, "test_ia")
-        os.makedirs(dossier_tests, exist_ok=True)
+        # 1. 👉 CRITIQUE : Création de 'test_ia/<nom_sous_dossier>/' et rangement de TOUS les fichiers de la session
+        # Nettoyage du nom de dossier (pas d'espaces ni de caractères bizarres)
+        nom_propre = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in nom_sous_dossier.lower())
+        dossier_cible = os.path.join(chemin_dossier, "test_ia", nom_propre)
+        os.makedirs(dossier_cible, exist_ok=True)
         
-        now = time.time()
+        # On déplace tout ce qui est à la racine de l'espace de travail temporaire vers le sous-dossier dédié
         for fichier in os.listdir(chemin_dossier):
             chemin_fichier = os.path.join(chemin_dossier, fichier)
-            if os.path.isfile(chemin_fichier) and fichier != ".gitignore":
-                # Calcul de l'âge du fichier en secondes
-                age_secondes = now - os.path.getmtime(chemin_fichier)
-                # On considère comme "produit par l'IA" uniquement ce qui a été créé/modifié dans les 15 dernières minutes (900s)
-                est_recent_par_ia = age_secondes < 900 
-                
-                nom_min = fichier.lower()
-                est_un_test_ou_rapport = (
-                    nom_min.startswith("test_") or 
-                    nom_min.endswith((".test.js", ".test.jsx", ".test.ts", ".test.tsx")) or 
-                    nom_min.endswith((".spec.js", ".spec.jsx", ".spec.ts", ".spec.tsx")) or 
-                    nom_min.endswith("test.java") or
-                    "rapport" in nom_min or 
-                    nom_min.endswith(".pdf")
-                )
-                
-                # Le fichier est déplacé SI ET SEULEMENT SI c'est un test/rapport ET qu'il a été généré par l'IA à l'instant
-                if est_un_test_ou_rapport and est_recent_par_ia:
-                    shutil.move(chemin_fichier, os.path.join(dossier_tests, fichier))
-                    print(f"📁 Nouveau test/rapport généré par l'IA '{fichier}' déplacé dans : {dossier_tests}/")
-                elif est_un_test_ou_rapport and not est_recent_par_ia:
-                    print(f"🛡️ Test pré-existant préservé à sa place d'origine : {fichier}")
+            # On ne déplace pas les dossiers ni les fichiers de configuration système (.gitignore, etc.)
+            if os.path.isfile(chemin_fichier) and not fichier.startswith("."):
+                shutil.move(chemin_fichier, os.path.join(dossier_cible, fichier))
+                print(f"📁 Fichier '{fichier}' rangé proprement dans : test_ia/{nom_propre}/")
 
         # 2. Génération automatique du pipeline CI/CD (GitHub Actions / GitLab CI)
         url_min = url_depot.lower()
@@ -102,22 +88,22 @@ jobs:
 
       - name: Installation et Exécution des Tests Python (pytest)
         run: |
-          if ls test_ia/*.py 1> /dev/null 2>&1; then
+          if ls test_ia/*/*.py 1> /dev/null 2>&1; then
             echo "🐍 Détection de tests Python dans test_ia/..."
             pip install pytest
             pytest test_ia/
           else
-            echo "Aucun test Python trouvé dans test_ia/."
+            echo "Aucun test Python trouvé."
           fi
 
       - name: Installation et Exécution des Tests Node.js (Vitest / Jest)
         run: |
-          if ls test_ia/*.test.* test_ia/*.spec.* 1> /dev/null 2>&1; then
-            echo "⚛️ Détection de tests JS/TS/React/Angular dans test_ia/..."
+          if ls test_ia/*/*.test.* test_ia/*/*.spec.* 1> /dev/null 2>&1; then
+            echo "⚛️ Détection de tests JS/TS dans test_ia/..."
             npm install -g vitest jest jsdom @testing-library/react
             npx vitest run test_ia/ || true
           else
-            echo "Aucun test JS/TS trouvé dans test_ia/."
+            echo "Aucun test JS/TS trouvé."
           fi
 """
                 with open(fichier_ci, "w", encoding="utf-8") as f:
@@ -141,14 +127,14 @@ test_python_et_js:
     - echo "🚀 Exécution des tests CI/CD sur GitLab..."
     - pip install pytest || true
     - npm install -g vitest || true
-    - if ls test_ia/*.py 1> /dev/null 2>&1; then pytest test_ia/; fi
-    - if ls test_ia/*.test.* 1> /dev/null 2>&1; then npx vitest run test_ia/; fi
+    - if ls test_ia/*/*.py 1> /dev/null 2>&1; then pytest test_ia/; fi
+    - if ls test_ia/*/*.test.* 1> /dev/null 2>&1; then npx vitest run test_ia/; fi
 """
                 with open(fichier_gitlab, "w", encoding="utf-8") as f:
                     f.write(gitlab_pipeline.strip())
                 print("⚙️ Pipeline GitLab CI créé automatiquement dans .gitlab-ci.yml")
 
-        # 3. Création du .gitignore propre (évite d'envoyer des caches lourds)
+        # 3. Création du .gitignore propre
         gitignore_content = """
 __pycache__/
 *.pyc
@@ -180,7 +166,10 @@ build/
         else:
             subprocess.run(["git", "remote", "set-url", "origin", url_depot], check=True, capture_output=True)
 
-        # 6. Ajout, Commit et Push (avec un timeout de 45 secondes)
+        # 6. 👉 SYNCHRONISATION ANTI-CONFLIT RAPIDE (< 2s) : On pull uniquement l'en-tête distant avant de pousser
+        subprocess.run(["git", "pull", "origin", branche, "--rebase", "--depth=1"], capture_output=True)
+
+        # 7. Ajout, Commit et Push
         subprocess.run(["git", "add", "."], check=True, capture_output=True)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         msg = f"[{timestamp}] {message_personnalise}"
@@ -194,7 +183,7 @@ build/
         )
         
         if result.returncode == 0 or "Everything up-to-date" in result.stderr or "up to date" in result.stdout:
-            return f"✅ Nouveaux tests rangés dans 'test_ia/' et poussés avec succès sur la branche '{branche}'. Le pipeline CI/CD va s'exécuter dans le Cloud !"
+            return f"✅ Tous les fichiers ont été rangés dans 'test_ia/{nom_propre}/' et poussés avec succès sur la branche '{branche}' !"
         else:
             return f"⚠️ Git a retourné une erreur au push : {result.stderr}"
             

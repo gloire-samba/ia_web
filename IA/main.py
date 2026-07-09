@@ -70,12 +70,11 @@ agent = CodeAgent(
         editeur_texte_csv, convertisseur_pdf_vers_editable, 
         convertisseur_editable_vers_pdf, web_search, outil_analyser_video,
         outil_reconnaitre_visage, 
-        outil_generer_manga, outil_transformer_manga,
-        outil_executer_commande_terminal, outil_git_commit_et_push 
+        outil_generer_manga, outil_transformer_manga, outil_git_commit_et_push 
     ],
     model=model,
     additional_authorized_imports=imports_autorises,
-    max_steps=20
+    max_steps=6
 )
 
 consigne = """
@@ -104,7 +103,6 @@ RÈGLES D'OR V46 :
    - INTERDICTION D'EXÉCUTION LOCALE : Il t'est STRICTEMENT INTERDIT d'exécuter les tests unitaires toi-même via le terminal (ne lance jamais pytest, vitest, jest, etc.). L'exécution des tests est déléguée au serveur de CI/CD distant (GitLab Testing / GitHub Actions).
    - DÉPLOIEMENT : Une fois les fichiers de code et de tests créés dans ton dossier de travail, utilise OBLIGATOIREMENT l'outil 'outil_git_commit_et_push' pour envoyer tout le travail sur le dépôt Git de l'utilisateur. L'outil organisera automatiquement les tests dans un dossier dédié.
    - RÉPONSE FINALE : Réponds à l'utilisateur en lui confirmant que le code et les tests unitaires ont été générés et poussés sur Git, et précise-lui explicitement : "🚀 *Le code et les tests ont été envoyés sur votre dépôt. Votre pipeline CI/CD (GitLab Testing / GitHub Actions) va maintenant prendre le relais pour exécuter les tests automatiquement dans le Cloud !*"
-
 10. AUTONOMIE ET CONNAISSANCES PERSONNELLES : 
    - Si l'utilisateur pose une question qui ne nécessite l'utilisation d'aucun outil, OU si l'accès à un outil échoue pour des raisons techniques, tu dois immédiatement faire appel à tes propres connaissances pour fournir une réponse complète.
    - Dans ce cas précis, tu dois OBLIGATOIREMENT débuter ta réponse par : "⚠️ **Je vous réponds en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️"
@@ -253,8 +251,14 @@ async def process_request(request: ChatRequest):
         out_name = None
         out_base64 = None
         
+        # --- CORRECTION : On vérifie que c'est bien UN FICHIER et pas un dossier (test_ia, .git, etc.) ---
         files = os.listdir(work_dir)
-        generated_files = [f for f in files if f != request.file_name]
+        generated_files = [
+            f for f in files 
+            if f != request.file_name 
+            and os.path.isfile(os.path.join(work_dir, f))  # 👈 Empêche l'erreur IsADirectoryError !
+            and not f.startswith(".")                      # 👈 Ignore les dossiers et fichiers Git (.gitignore, .git...)
+        ]
         
         if generated_files:
             out_name = generated_files[0] 

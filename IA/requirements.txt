@@ -21,7 +21,7 @@ langchain
 langchain-community
 langchain-google-genai
 langchain-text-splitters
-duckduckgo-search
+tavily-python
 
 # Mémoire Locale (RAG)
 sentence-transformers

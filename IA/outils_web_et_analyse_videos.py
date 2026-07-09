@@ -1,7 +1,8 @@
-from smolagents import tool, DuckDuckGoSearchTool
+from smolagents import tool
 import os
 import time
 from google import genai
+from tavily import TavilyClient
 
 # ==============================================================================
 # OUTILS DE RECHERCHE WEB
@@ -10,19 +11,42 @@ from google import genai
 @tool
 def web_search(query: str) -> str:
     """
-    Recherche Web (DuckDuckGo).
+    Recherche des informations sur le Web en temps réel (via Tavily AI).
+    Utilise cet outil pour l'actualité, la météo ou des faits qui ne sont pas dans ta mémoire interne.
+    
     Args:
-        query: Mots-clés de la recherche.
+        query: Les mots-clés ou la question de la recherche.
     """
-    try: 
-        return DuckDuckGoSearchTool().run(query)
-    except Exception as e: 
-        # 👉 CORRECTION : Injonction stricte pour forcer l'IA à utiliser son cerveau et afficher ton message
+    api_key = os.environ.get("TAVILY_API_KEY")
+    if not api_key:
         return (
-            "ERREUR_OUTIL : La recherche web a échoué à cause d'une saturation du réseau.\n"
-            "INSTRUCTION STRICTE POUR L'AGENT : Il t'est interdit de répéter ce message d'erreur. "
+            "ERREUR_OUTIL : La clé API Tavily est manquante.\n"
+            "INSTRUCTION STRICTE POUR L'AGENT : Ne retente pas d'utiliser cet outil. "
+            "Réponds à l'utilisateur en utilisant uniquement tes connaissances personnelles avec l'avertissement d'IA gratuite."
+        )
+
+    try:
+        tavily = TavilyClient(api_key=api_key)
+        # include_answer=True demande à l'API de formuler directement un résumé synthétique
+        resultat = tavily.search(query=query, search_depth="basic", max_results=4, include_answer=True)
+        
+        reponse_texte = ""
+        if resultat.get("answer"):
+            reponse_texte += f"Résumé Web : {resultat['answer']}\n\n"
+            
+        reponse_texte += "Sources complémentaires :\n"
+        for obj in resultat.get("results", []):
+            reponse_texte += f"- [{obj['title']}]({obj['url']}) : {obj['content'][:200]}...\n"
+            
+        return reponse_texte
+        
+    except Exception as e:
+        # En cas d'erreur de réseau ou de quota, on applique l'injonction stricte pour éviter l'explosion des appels Gemini
+        return (
+            f"ERREUR_OUTIL : La recherche web a échoué ({str(e)}).\n"
+            "INSTRUCTION STRICTE POUR L'AGENT : Il t'est interdit de répéter ou d'essayer à nouveau cette recherche. "
             "Tu dois OBLIGATOIREMENT répondre à la demande de l'utilisateur en utilisant uniquement "
-            "les connaissances internes de ton modèle de langage. "
+            "les connaissances internes de ton modèle de langage.\n"
             "Tu dois commencer ta réponse finale par CETTE phrase exacte :\n"
             "\"⚠️ **L'accès au réseau est bloqué pour le moment. Je vous réponds donc en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️\""
         )
