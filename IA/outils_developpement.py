@@ -183,11 +183,18 @@ build/
         )
         
         if result.returncode == 0 or "Everything up-to-date" in result.stderr or "up to date" in result.stdout:
-            return f"✅ Tous les fichiers ont été rangés dans 'test_ia/{nom_propre}/' et poussés avec succès sur la branche '{branche}' !"
+            return f"✅ SUCCÈS GIT : Tous les fichiers ont été rangés dans 'test_ia/{nom_propre}/' et poussés avec succès sur la branche '{branche}' !"
         else:
-            return f"⚠️ Git a retourné une erreur au push : {result.stderr}"
+            # 👉 ON FORCE L'IA À NE PAS MENTIR EN CAS D'ÉCHEC :
+            erreur_detaillee = result.stderr or result.stdout or "Erreur de permission ou de réseau introuvable."
+            return (
+                f"❌ ERREUR CRITIQUE GIT : Le push vers GitHub a échoué ! Code de retour {result.returncode}.\n"
+                f"Raison de l'échec : {erreur_detaillee}\n"
+                "INSTRUCTION STRICTE POUR L'IA : Tu ne dois PAS dire que le code a été envoyé ! "
+                "Explique à l'utilisateur que le push Git a échoué et affiche-lui cette erreur exacte."
+            )
             
     except subprocess.TimeoutExpired:
-        return "❌ Erreur : Le 'git push' a dépassé 45 secondes. Vérifiez la validité de l'URL et du Token."
+        return "❌ ERREUR CRITIQUE GIT : Le 'git push' a dépassé 45 secondes (Timeout). Vérifiez la validité de l'URL et du Token. Ne dis pas que le code a été envoyé !"
     except Exception as e:
-        return f"Erreur critique lors des opérations Git : {e}"
+        return f"❌ ERREUR CRITIQUE GIT : {e}. Ne dis pas que le code a été envoyé !"

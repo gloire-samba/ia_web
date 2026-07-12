@@ -3,8 +3,9 @@ import base64
 import shutil
 import uuid
 import tempfile
-from typing import Optional
-from fastapi import FastAPI, HTTPException, UploadFile, File
+import time
+from typing import Optional, Dict, Any
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
@@ -23,7 +24,20 @@ from outils_ecriture import (
 from outils_web_et_analyse_videos import web_search, outil_analyser_video
 from outils_visage import outil_ajouter_visage, outil_reconnaitre_visage, outil_supprimer_visage
 from outils_style_manga import outil_generer_manga, outil_transformer_manga
-from outils_developpement import outil_executer_commande_terminal, outil_git_commit_et_push
+# 👉 CRITIQUE : On importe UNIQUEMENT l'outil de commit/push (pas le terminal brut !)
+from outils_developpement import outil_git_commit_et_push
+
+# ==============================================================================
+# 🛡️ BOUCLIER ANTI-CRASH / ANTI-SEGFAULT (OBLIGATOIRE SUR CPU)
+# Empêche PyTorch, TensorFlow, FAISS et OpenMP de saturer la RAM et les threads C++
+# ==============================================================================
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 # --- CONFIGURATION SÉCURISÉE ---
@@ -33,10 +47,11 @@ if not api_key:
 
 os.environ["GEMINI_API_KEY"] = api_key 
 
-# 👉 Retour au modèle 3.5-flash qui fonctionne
 model = LiteLLMModel(
     model_id="gemini/gemini-3.5-flash", 
-    api_key=api_key
+    api_key=api_key,
+    num_retries=0  # 👈 NOUVEAU : Force l'IA à échouer immédiatement si Google bloque, au lieu de patienter 13 minutes !
+
 )
 
 # --- INITIALISATION DES EMBEDDINGS (MÉMOIRE) ---
@@ -63,6 +78,7 @@ if embeddings is None:
 
 imports_autorises = ["os", "pandas", "zipfile", "openpyxl", "pptx", "docx", "subprocess", "reportlab", "PIL", "PIL.Image", "csv", "pdf2image", "re", "time", "io", "base64", "requests"]
 
+# 👉 AGENT OPTIMISÉ : Sans outil terminal et limité à 6 étapes max
 agent = CodeAgent(
     tools=[
         outil_rag, outil_vision, createur_word, modificateur_word, 
@@ -70,11 +86,12 @@ agent = CodeAgent(
         editeur_texte_csv, convertisseur_pdf_vers_editable, 
         convertisseur_editable_vers_pdf, web_search, outil_analyser_video,
         outil_reconnaitre_visage, 
-        outil_generer_manga, outil_transformer_manga, outil_git_commit_et_push 
+        outil_generer_manga, outil_transformer_manga,
+        outil_git_commit_et_push 
     ],
     model=model,
     additional_authorized_imports=imports_autorises,
-    max_steps=6
+    max_steps=6 # 👈 Empêche le mitraillage d'API et l'erreur 503/429
 )
 
 consigne = """
@@ -84,12 +101,12 @@ RÈGLES D'OR V46 :
 3. MODIF PDF : Convertis (docx/xlsx) -> Modifie -> Reconvertis.
 4. CITATION DES SOURCES : Lorsque tu utilises l'outil de recherche web avec succès, tu DOIS OBLIGATOIREMENT inclure les liens (URLs) ou le nom des sites sources à la toute fin de ta réponse sous la mention 'Sources :'.
 5. HONNÊTETÉ : N'invente pas de fausses données. Si la recherche web échoue, applique strictement le protocole d'erreur réseau qui t'est fourni par l'outil.
-6. RECONNAISSANCE FACIALE (Règle stricte) : Si l'utilisateur donne une image et demande "Qui est cette personne ?" SANS préciser où chercher :
-   - ÉTAPE A : Utilise UNIQUEMENT 'outil_vision' pour analyser l'image grâce à tes propres connaissances de modèle. N'utilise pas l'outil de base de données.
-   - ÉTAPE B : SI TU RECONNAIS la personne, donne son nom et ajoute OBLIGATOIREMENT ce message d'avertissement : "⚠️ *Étant une IA gratuite, il est possible que je me trompe.*"
-   - ÉTAPE C : SI TU NE RECONNAIS PAS la personne, dis-le clairement, puis propose explicitement à l'utilisateur deux options pour l'aider :
-        Option 1 : Te demander de vérifier dans la base de données biométrique de l'application.
-        Option 2 : Te demander de lancer une recherche sur le Web.
+6. RECONNAISSANCE FACIALE (Règle stricte d'aiguillage) :
+   - SI l'utilisateur demande explicitement de chercher dans la "base de données" (ou "base biométrique", "FAISS", "application"), utilise DIRECTEMENT ET UNIQUEMENT l'outil 'outil_reconnaitre_visage'. Ne fais pas d'analyse vision avant !
+   - SI l'utilisateur demande "Qui est cette personne ?" SANS préciser où chercher :
+        * ÉTAPE A : Utilise UNIQUEMENT 'outil_vision' pour analyser l'image grâce à tes propres connaissances culturelles (célébrités, personnalités publiques). N'utilise pas 'outil_reconnaitre_visage'.
+        * ÉTAPE B : SI TU RECONNAIS la personne via la vision, donne son nom avec l'avertissement : "⚠️ *Étant une IA gratuite, il est possible que je me trompe.*"
+        * ÉTAPE C : SI TU NE RECONNAIS PAS la personne via la vision, dis-le clairement, puis propose explicitement à l'utilisateur : "Souhaitez-vous que je vérifie si cette personne est enregistrée dans la base de données biométrique de l'application ?".
 7. GÉNÉRATION ET STYLE MANGA : 
    - Si l'utilisateur demande de générer ou dessiner une image manga de toutes pièces, utilise 'outil_generer_manga'.
    - Si l'utilisateur donne une image existante et demande de la mettre en style manga, utilise 'outil_transformer_manga'.
@@ -101,8 +118,11 @@ RÈGLES D'OR V46 :
 9. TESTS UNITAIRES ET DÉPLOIEMENT GIT (RÈGLE STRICTE CI/CD) :
    - RÔLE DE L'IA : Tu es un développeur. Ton rôle est de rédiger le code propre ET de générer les fichiers de tests unitaires complets correspondant au langage (ex: fichiers .py pour pytest, .test.jsx pour React, .spec.ts pour Angular, .java pour JUnit...).
    - INTERDICTION D'EXÉCUTION LOCALE : Il t'est STRICTEMENT INTERDIT d'exécuter les tests unitaires toi-même via le terminal (ne lance jamais pytest, vitest, jest, etc.). L'exécution des tests est déléguée au serveur de CI/CD distant (GitLab Testing / GitHub Actions).
-   - DÉPLOIEMENT : Une fois les fichiers de code et de tests créés dans ton dossier de travail, utilise OBLIGATOIREMENT l'outil 'outil_git_commit_et_push' pour envoyer tout le travail sur le dépôt Git de l'utilisateur. L'outil organisera automatiquement les tests dans un dossier dédié.
-   - RÉPONSE FINALE : Réponds à l'utilisateur en lui confirmant que le code et les tests unitaires ont été générés et poussés sur Git, et précise-lui explicitement : "🚀 *Le code et les tests ont été envoyés sur votre dépôt. Votre pipeline CI/CD (GitLab Testing / GitHub Actions) va maintenant prendre le relais pour exécuter les tests automatiquement dans le Cloud !*"
+   - DÉPLOIEMENT : Une fois les fichiers de code et de tests créés dans ton dossier de travail, utilise OBLIGATOIREMENT l'outil 'outil_git_commit_et_push' pour envoyer tout le travail sur le dépôt Git de l'utilisateur. L'outil organisera automatiquement les tests dans un sous-dossier dédié.
+   - RÈGLE DE VERACITÉ ABSOLUE : Tu dois LIRE ATTENTIVEMENT la réponse retournée par l'outil 'outil_git_commit_et_push' :
+        * SI ET SEULEMENT SI l'outil retourne un message de succès (✅), tu peux répondre : "🚀 *Le code et les tests ont été envoyés sur votre dépôt. Votre pipeline CI/CD va maintenant prendre le relais pour exécuter les tests automatiquement dans le Cloud !*"
+        * SI l'outil retourne une erreur (❌ ou ⚠️), TU AS L'INTERDICTION FORMELLE de dire que le code a été envoyé ! Tu dois afficher l'erreur exacte retournée par Git à l'utilisateur pour qu'il puisse corriger son lien ou son token.
+
 10. AUTONOMIE ET CONNAISSANCES PERSONNELLES : 
    - Si l'utilisateur pose une question qui ne nécessite l'utilisation d'aucun outil, OU si l'accès à un outil échoue pour des raisons techniques, tu dois immédiatement faire appel à tes propres connaissances pour fournir une réponse complète.
    - Dans ce cas précis, tu dois OBLIGATOIREMENT débuter ta réponse par : "⚠️ **Je vous réponds en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️"
@@ -120,26 +140,129 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==============================================================================
+# 🎟️ GESTION DU POLLING ET DES TICKETS (SYSTEME ASYNCHRONE)
+# ==============================================================================
+
+# Dictionnaire global en mémoire : { "job_id": { "status": "en_cours"|"termine"|"erreur", ... } }
+taches_en_cours: Dict[str, Dict[str, Any]] = {}
+
 class ChatRequest(BaseModel):
     prompt: str
     file_name: Optional[str] = None
     file_base64: Optional[str] = None
 
-class ChatResponse(BaseModel):
-    text: str
+class TicketResponse(BaseModel):
+    ticket_id: str
+    status: str
+    message: str
+
+class StatusResponse(BaseModel):
+    ticket_id: str
+    status: str
+    text: Optional[str] = None
     output_file_name: Optional[str] = None
     output_file_base64: Optional[str] = None
-    
+    error: Optional[str] = None
+
 class VisageSyncRequest(BaseModel):
     id_visage: int       
     image_base64: str   
     nom_personne: str
 
-# LA ROUTE DE TRANSCRIPTION DU MICROPHONE
+# --- FONCTION DE TRAVAIL EN ARRIÈRE-PLAN ---
+def executer_travail_ia_background(ticket_id: str, prompt: str, file_name: Optional[str], file_base64: Optional[str]):
+    """
+    Exécute l'agent IA en tâche de fond pour ne jamais bloquer la requête HTTP de Hugging Face au-delà de 60 secondes.
+    """
+    work_dir = f"workspace_{ticket_id}"
+    os.makedirs(work_dir, exist_ok=True)
+    
+    try:
+        input_path = None
+        if file_base64 and file_name:
+            input_path = os.path.join(work_dir, file_name)
+            with open(input_path, "wb") as f:
+                f.write(base64.b64decode(file_base64))
+            initialiser_rag([input_path], embeddings)
+        else:
+            vider_memoire_rag()
+            
+        instruction = (
+            f"RÈGLE ABSOLUE : Ton espace de travail est le dossier '{work_dir}/'. "
+            f"Tu DOIS OBLIGATOIREMENT préfixer tous les noms de fichiers que tu crées, modifies ou lis avec ce chemin exact.\n"
+        )
+        
+        if input_path:
+            instruction += (
+                f"\n⚠️ INFORMATION IMPORTANTE : L'utilisateur a joint un fichier nommé '{file_name}'. "
+                f"Son chemin d'accès complet est '{input_path}'. Utilise tes outils sur ce fichier si la demande le nécessite.\n"
+            )
+
+        instruction += f"\nDemande de l'utilisateur : {prompt}"
+        
+        resultat_ia = ""
+        max_retries = 3
+        
+        for essai in range(max_retries):
+            try:
+                resultat_ia = agent.run(instruction)
+                break 
+            except Exception as e:
+                error_str = str(e)
+                if "503" in error_str or "high demand" in error_str or "UNAVAILABLE" in error_str or "429" in error_str or "quota" in error_str:
+                    if essai < max_retries - 1:
+                        time.sleep(5)
+                        continue 
+                    else:
+                        resultat_ia = "⚠️ **Les serveurs de l'IA (Google) sont surchargés.** Veuillez réessayer plus tard."
+                else:
+                    resultat_ia = f"❌ **Erreur d'exécution de l'IA :** {error_str}"
+                    break
+
+        out_name = None
+        out_base64 = None
+        
+        # 🛡️ CORRECTION MAJEURE : On filtre pour ne prendre que les FICHIERS et ignorer les sous-dossiers (test_ia, .git, etc.)
+        files = os.listdir(work_dir)
+        generated_files = [
+            f for f in files 
+            if f != file_name 
+            and os.path.isfile(os.path.join(work_dir, f))  # 👈 Empêche l'erreur IsADirectoryError !
+            and not f.startswith(".")                      # 👈 Ignore les dossiers/fichiers Git (.gitignore, .git...)
+        ]
+        
+        if generated_files:
+            out_name = generated_files[0] 
+            with open(os.path.join(work_dir, out_name), "rb") as f:
+                out_base64 = base64.b64encode(f.read()).decode('utf-8')
+
+        # ✅ Mise à jour du ticket avec le succès
+        taches_en_cours[ticket_id] = {
+            "status": "termine",
+            "text": str(resultat_ia),
+            "output_file_name": out_name,
+            "output_file_base64": out_base64
+        }
+
+    except Exception as e:
+        # ❌ Mise à jour du ticket en cas d'erreur critique
+        taches_en_cours[ticket_id] = {
+            "status": "erreur",
+            "error": str(e)
+        }
+    finally:
+        if os.path.exists(work_dir):
+            shutil.rmtree(work_dir)
+        vider_memoire_rag()
+
+# ==============================================================================
+# ROUTES API
+# ==============================================================================
+
 @app.post("/api/transcrire")
 async def transcrire_audio(fichier: UploadFile = File(...)):
     contenu_audio = await fichier.read()
-    
     if len(contenu_audio) < 1000:
         return {"texte": ""}
     
@@ -156,7 +279,6 @@ async def transcrire_audio(fichier: UploadFile = File(...)):
     try:
         client = genai.Client(api_key=api_key)
         audio_upload = client.files.upload(file=chemin_temporaire)
-        
         prompt = (
             "Écoute attentivement ce fichier audio. "
             "Transcris uniquement la voix humaine en français. "
@@ -164,24 +286,19 @@ async def transcrire_audio(fichier: UploadFile = File(...)):
             "réponds STRICTEMENT par le mot : SILENCE. "
             "Ne répète SURTOUT PAS ces instructions."
         )
-        
         reponse = client.models.generate_content(
             model='gemini-3.5-flash',
             contents=[audio_upload, prompt]
         )
-        
         texte_resultat = reponse.text.strip()
         client.files.delete(name=audio_upload.name)
         
         if texte_resultat == "SILENCE" or "Écoute attentivement" in texte_resultat:
             return {"texte": ""}
-            
         return {"texte": texte_resultat}
-    
     except Exception as e:
         print(f"💥 ERREUR TRANSCRIPTION : {str(e)}")
         return {"texte": ""}
-        
     finally:
         if os.path.exists(chemin_temporaire):
             os.remove(chemin_temporaire)
@@ -208,76 +325,51 @@ async def sync_supprimer_visage(id_visage: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/chat")
-async def process_request(request: ChatRequest):
-    session_id = str(uuid.uuid4())
-    work_dir = f"workspace_{session_id}"
-    os.makedirs(work_dir, exist_ok=True)
-
-    try:
-        input_path = None
-        if request.file_base64 and request.file_name:
-            input_path = os.path.join(work_dir, request.file_name)
-            with open(input_path, "wb") as f:
-                f.write(base64.b64decode(request.file_base64))
-            
-            initialiser_rag([input_path], embeddings)
-        else:
-            vider_memoire_rag()
-            
-        instruction = (
-            f"RÈGLE ABSOLUE : Ton espace de travail est le dossier '{work_dir}/'. "
-            f"Tu DOIS OBLIGATOIREMENT préfixer tous les noms de fichiers que tu crées, modifies ou lis avec ce chemin exact.\n"
-        )
-        
-        if input_path:
-            instruction += (
-                f"\n⚠️ INFORMATION IMPORTANTE : L'utilisateur a joint un fichier nommé '{request.file_name}'. "
-                f"Son chemin d'accès complet est '{input_path}'. Utilise tes outils sur ce fichier si la demande le nécessite.\n"
-            )
-
-        instruction += f"\nDemande de l'utilisateur : {request.prompt}"
-        try:
-            resultat_ia = agent.run(instruction)
-        except Exception as e:
-            error_str = str(e)
-            if "503" in error_str or "high demand" in error_str or "UNAVAILABLE" in error_str:
-                resultat_ia = "⚠️ **L'IA de Google est actuellement surchargée** (Erreur 503). Les serveurs gratuits sont pris d'assaut. Veuillez réessayer dans quelques instants ! ⏳"
-            elif "429" in error_str or "quota" in error_str:
-                resultat_ia = "🛑 **Le quota gratuit de l'API Google est atteint pour aujourd'hui.**"
-            else:
-                resultat_ia = f"❌ **Une erreur est survenue dans le cerveau de l'IA :** {error_str}"
-
-        out_name = None
-        out_base64 = None
-        
-        # --- CORRECTION : On vérifie que c'est bien UN FICHIER et pas un dossier (test_ia, .git, etc.) ---
-        files = os.listdir(work_dir)
-        generated_files = [
-            f for f in files 
-            if f != request.file_name 
-            and os.path.isfile(os.path.join(work_dir, f))  # 👈 Empêche l'erreur IsADirectoryError !
-            and not f.startswith(".")                      # 👈 Ignore les dossiers et fichiers Git (.gitignore, .git...)
-        ]
-        
-        if generated_files:
-            out_name = generated_files[0] 
-            with open(os.path.join(work_dir, out_name), "rb") as f:
-                out_base64 = base64.b64encode(f.read()).decode('utf-8')
-
-        return ChatResponse(
-            text=str(resultat_ia),
-            output_file_name=out_name,
-            output_file_base64=out_base64
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# 👉 ENDPOINT 1 : Lance l'IA en tâche de fond et renvoie le ticket en 0.2 seconde !
+@app.post("/api/chat", response_model=TicketResponse)
+async def process_request_async(request: ChatRequest, background_tasks: BackgroundTasks):
+    ticket_id = f"job_{uuid.uuid4().hex[:12]}"
+    taches_en_cours[ticket_id] = {"status": "en_cours"}
     
-    finally:
-        if os.path.exists(work_dir):
-            shutil.rmtree(work_dir)
-        vider_memoire_rag()
+    background_tasks.add_task(
+        executer_travail_ia_background,
+        ticket_id=ticket_id,
+        prompt=request.prompt,
+        file_name=request.file_name,
+        file_base64=request.file_base64
+    )
+    
+    return TicketResponse(
+        ticket_id=ticket_id,
+        status="en_cours",
+        message="Tâche IA démarrée avec succès."
+    )
+
+# 👉 ENDPOINT 2 : Guichet de vérification appelé par le Front / Relais toutes les 4 secondes
+@app.get("/api/status/{ticket_id}", response_model=StatusResponse)
+async def verifier_statut_ticket(ticket_id: str):
+    if ticket_id not in taches_en_cours:
+        raise HTTPException(status_code=404, detail="Ticket introuvable ou expiré.")
+        
+    tache = taches_en_cours[ticket_id]
+    status = tache.get("status")
+    
+    if status == "en_cours":
+        return StatusResponse(ticket_id=ticket_id, status="en_cours")
+    elif status == "termine":
+        return StatusResponse(
+            ticket_id=ticket_id,
+            status="termine",
+            text=tache.get("text"),
+            output_file_name=tache.get("output_file_name"),
+            output_file_base64=tache.get("output_file_base64")
+        )
+    elif status == "erreur":
+        return StatusResponse(
+            ticket_id=ticket_id,
+            status="erreur",
+            error=tache.get("error", "Erreur inconnue lors de l'exécution de l'IA.")
+        )
 
 if __name__ == "__main__":
     import uvicorn

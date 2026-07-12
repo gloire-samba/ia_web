@@ -150,7 +150,7 @@ Voici comment l'obtenir et l'assembler dans l'URL en 1 minute :
 3. Cliquez sur **Personal access tokens**, puis sélectionnez **Tokens (classic)**.
 4. Cliquez sur le bouton **Generate new token** -> **Generate new token (classic)**.
 5. Dans le champ **Note**, donnez-lui un nom pour vous en rappeler (ex: `Agent IA DevOps`).
-6. Dans la liste des cases à cocher en dessous, **cochez impérativement la case principale `repo`** (cela donne le droit au jeton d'écrire et de pousser du code dans vos dépôts).
+6. Dans la liste des cases à cocher en dessous, **cochez impérativement les case principale `repo et workflow`** (cela donne le droit au jeton d'écrire et de pousser du code dans vos dépôts).
 7. Descendez tout en bas de la page et cliquez sur le bouton vert **Generate token**.
 8. GitHub va afficher une longue suite de lettres et chiffres commençant par `ghp_...` (ou `github_pat_...`). **Copiez immédiatement cette clé**, car elle ne sera plus jamais affichée ensuite !
 

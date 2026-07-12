@@ -3,6 +3,7 @@ import './Chat.css';
 import type { Message } from '../../models/message';
 import { chatService } from '../../services/chat.service';
 import { AudioRecorderService } from '../../services/audio-recorder.service';
+import type { StatusResponse } from '../../models/status-response';
 
 export const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -11,7 +12,11 @@ export const Chat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false); 
   
+  // 👉 NOUVEAU : Message de chargement dynamique
+  const [loadingMessage, setLoadingMessage] = useState("L'IA démarre la tâche...");
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -20,6 +25,22 @@ export const Chat: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Nettoyage de l'intervalle si le composant est démonté
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
 
   const onFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -35,7 +56,45 @@ export const Chat: React.FC = () => {
 
   const removeFile = () => setSelectedFile(null);
 
-  // 👉 CORRECTION : Accepte le texte forcé par le microphone
+  const handleError = (message: string) => {
+    setMessages(prev => [...prev, { sender: 'ia', text: message }]);
+    setIsLoading(false);
+    stopPolling();
+  };
+
+  // 2. Boucle de vérification automatique toutes les 3.5 secondes
+  const startPolling = (ticketId: string) => {
+    stopPolling(); 
+
+    pollingIntervalRef.current = window.setInterval(async () => {
+      try {
+        const response: StatusResponse = await chatService.checkStatus(ticketId);
+
+        if (response.status === 'termine') {
+          let downloadLink: string | undefined = undefined;
+          if (response.output_file_base64 && response.output_file_name) {
+            downloadLink = chatService.createDownloadUrl(response.output_file_base64);
+          }
+          setMessages(prev => [...prev, {
+            sender: 'ia', text: response.text || "Tâche terminée avec succès !",
+            fileName: response.output_file_name, downloadUrl: downloadLink
+          }]);
+          setIsLoading(false);
+          stopPolling();
+        } else if (response.status === 'erreur') {
+          handleError(`❌ Erreur de l'IA : ${response.error}`);
+        } else {
+          // 👉 CORRECTION : Un message unique, élégant et passe-partout !
+          setLoadingMessage("L'IA réfléchit et prépare sa réponse... ⚙️");
+        }
+      } catch (err: any) {
+        console.error("Erreur lors du polling :", err);
+        handleError("La connexion avec le serveur a été interrompue pendant l'attente.");
+      }
+    }, 3500);
+  };
+
+  // 1. Démarrage et envoi de la requête
   const sendMessage = async (texteForce?: string | React.MouseEvent | React.KeyboardEvent) => {
     const texteAEnvoyer = typeof texteForce === 'string' ? texteForce : currentPrompt;
     
@@ -45,6 +104,7 @@ export const Chat: React.FC = () => {
     }
 
     setIsLoading(true);
+    setLoadingMessage("Envoi de la requête et création du ticket... 🎫");
 
     const userMessage: Message = {
       sender: 'user',
@@ -63,19 +123,14 @@ export const Chat: React.FC = () => {
     setSelectedFile(null);
 
     try {
-      const response = await chatService.sendMessage(request);
-      let downloadLink: string | undefined = undefined;
-
-      if (response.output_file_base64 && response.output_file_name) {
-        downloadLink = chatService.createDownloadUrl(response.output_file_base64);
+      // On reçoit le ticket instantanément
+      const ticket = await chatService.sendMessage(request);
+      if (ticket && ticket.ticket_id) {
+        setLoadingMessage("L'IA travaille en tâche de fond (Git, tests, code)... ⚙️");
+        startPolling(ticket.ticket_id);
+      } else {
+        handleError("Erreur : Aucun ticket reçu du serveur.");
       }
-
-      setMessages(prev => [...prev, {
-        sender: 'ia',
-        text: response.text,
-        fileName: response.output_file_name,
-        downloadUrl: downloadLink
-      }]);
     } catch (error: any) {
       const errorTexte = error.message || JSON.stringify(error);
       let messageErreur = "";
@@ -88,9 +143,7 @@ export const Chat: React.FC = () => {
         messageErreur = "Erreur de communication avec l'IA. ❌";
       }
 
-      setMessages(prev => [...prev, { sender: 'ia', text: messageErreur }]);
-    } finally {
-      setIsLoading(false);
+      handleError(messageErreur);
     }
   };
 
@@ -98,12 +151,12 @@ export const Chat: React.FC = () => {
     if (isRecording) {
       setIsRecording(false);
       setIsLoading(true);
+      setLoadingMessage("Transcription vocale en cours...");
       try {
         const audioBlob = await AudioRecorderService.stopRecording();
         const formData = new FormData();
         formData.append('fichier', audioBlob, 'audio.webm');
 
-        // 👉 On pointe directement sur le Cloud Hugging Face pour l'audio
         const response = await fetch('https://elgronaldo-web-ia.hf.space/api/transcrire', {
           method: 'POST',
           body: formData
@@ -116,7 +169,7 @@ export const Chat: React.FC = () => {
         if (data.texte && data.texte !== 'SILENCE') {
           const nouveauTexte = currentPrompt + (currentPrompt ? ' ' : '') + data.texte;
           setCurrentPrompt(''); 
-          await sendMessage(nouveauTexte); // 👉 L'ENVOI AUTOMATIQUE
+          await sendMessage(nouveauTexte); // Envoi automatique
         } else {
           setIsLoading(false);
         }
@@ -166,7 +219,7 @@ export const Chat: React.FC = () => {
         
         {isLoading && (
           <div className="message-bubble ia loading">
-            <em>L'IA réfléchit (et LibreOffice mouline)...</em>
+            <em>{loadingMessage}</em>
           </div>
         )}
         <div ref={messagesEndRef} />

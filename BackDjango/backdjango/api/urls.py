@@ -7,8 +7,12 @@ router.register(r'utilisateurs', views.UtilisateurViewSet, basename='utilisateur
 router.register(r'visages', views.VisageViewSet, basename='visage')
 
 urlpatterns = [
-    # Le relais IA
+    # Le relais IA (Étape 1 : Démarrage et obtention du ticket)
     path('api/chat', views.chat_relay, name='chat_relay'),
+    
+    # 👉 NOUVEAU : Le relais IA (Étape 2 : Vérification du statut en boucle)
+    path('api/chat/status/<str:ticket_id>', views.check_status_relay, name='check_status_relay'),
+    path('api/chat/status/<str:ticket_id>/', views.check_status_relay, name='check_status_relay_slash'),
     
     # Authentification Locale
     path('api/auth/login/', views.AuthAPIView.as_view(), name='login'),

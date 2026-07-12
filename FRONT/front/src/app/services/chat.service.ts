@@ -2,7 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ChatRequest } from '../models/chat-request';
-import { ChatResponse } from '../models/chat-response';
+import { TicketResponse } from '../models/ticket-response';
+import { StatusResponse } from '../models/status-response';
 import { ServeurService } from './serveur.service';
 
 @Injectable({
@@ -10,14 +11,19 @@ import { ServeurService } from './serveur.service';
 })
 export class ChatService {
   private http = inject(HttpClient);
-  private serveurService = inject(ServeurService); // On injecte notre nouveau service
+  private serveurService = inject(ServeurService);
 
-  // 1. Envoie la requête au serveur (en demandant l'URL au ServeurService)
-  sendMessage(request: ChatRequest): Observable<ChatResponse> {
-    return this.http.post<ChatResponse>(this.serveurService.getChatUrl(), request);
+  // 1. ÉTAPE 1 : Démarrer la tâche IA et obtenir le ticket instantanément
+  sendMessage(request: ChatRequest): Observable<TicketResponse> {
+    return this.http.post<TicketResponse>(this.serveurService.getChatUrl(), request);
   }
 
-  // 2. Utilitaire pour convertir un fichier en Base64
+  // 2. ÉTAPE 2 : Interroger le statut de la tâche (Polling)
+  checkStatus(ticketId: string): Observable<StatusResponse> {
+    return this.http.get<StatusResponse>(`${this.serveurService.getChatUrl()}/status/${ticketId}`);
+  }
+
+  // 3. Utilitaire pour convertir un fichier en Base64
   convertFileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -27,7 +33,7 @@ export class ChatService {
     });
   }
 
-  // 3. Utilitaire pour créer un lien de téléchargement
+  // 4. Utilitaire pour créer un lien de téléchargement
   createDownloadUrl(base64: string, fileName: string): string {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);

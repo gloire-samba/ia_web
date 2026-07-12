@@ -26,23 +26,66 @@ import base64
 
 load_dotenv()
 
-PYTHON_API_URL = "http://ia:7860/api/visages" # Utilise "localhost" si tu ne passes pas par le réseau Docker
+# Si settings.PYTHON_API_URL vaut déjà "http://ia:7860/api/chat" ou "https://.../api/chat", on s'adapte proprement :
+IA_BASE_URL = getattr(settings, 'PYTHON_API_URL', 'http://ia:7860/api/chat').replace('/api/chat', '')
 
 # ==========================================
-# 1. LE RELAIS DU CHATBOT IA 
+# 1. LE RELAIS DU CHATBOT IA (SYSTÈME DE TICKETS / POLLING)
 # ==========================================
 @csrf_exempt 
 def chat_relay(request):
+    """
+    ÉTAPE 1 : Reçoit la demande d'Angular/React, l'envoie à Hugging Face et renvoie le TICKET en 0.2 seconde !
+    Route : POST /api/chat
+    """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            response = requests.post(settings.PYTHON_API_URL, json=data)
+            # On envoie vers http://ia:7860/api/chat (ou ton Space public)
+            url_chat = f"{IA_BASE_URL}/api/chat"
+            response = requests.post(url_chat, json=data, timeout=10)
             response.raise_for_status() 
-            return JsonResponse(response.json())
+            return JsonResponse(response.json(), status=200)
         except requests.exceptions.HTTPError as e:
             return JsonResponse({'detail': e.response.text}, status=e.response.status_code)
         except Exception as e:
-            return JsonResponse({'detail': str(e)}, status=500)
+            return JsonResponse({
+                'ticket_id': 'error',
+                'status': 'erreur',
+                'message': f"Erreur de communication avec le microservice IA : {str(e)}"
+            }, status=500)
+    return JsonResponse({'detail': 'Method Not Allowed'}, status=405)
+
+
+@csrf_exempt 
+def check_status_relay(request, ticket_id):
+    """
+    Guichet de vérification résilient : Ne renvoie jamais d'erreur HTTP 500 pour ne pas faire crasher le Front-End !
+    """
+    if request.method == 'GET':
+        try:
+            url_status = f"{IA_BASE_URL}/api/status/{ticket_id}"
+            response = requests.get(url_status, timeout=10)
+            
+            # Si HF renvoie une 404 (suite à un redémarrage du Space qui a effacé la mémoire RAM)
+            if response.status_code == 404:
+                return JsonResponse({
+                    'ticket_id': ticket_id,
+                    'status': 'erreur',
+                    'error': "Le serveur IA a redémarré pendant le traitement et a perdu la tâche en cours. Veuillez relancer votre demande."
+                }, status=200) # 👈 Important : On répond en 200 OK avec un statut d'erreur propre !
+                
+            response.raise_for_status()
+            return JsonResponse(response.json(), status=200)
+            
+        except Exception as e:
+            # En cas de coupure réseau temporaire avec Hugging Face, on dit à l'interface de continuer à attendre gentiment !
+            return JsonResponse({
+                'ticket_id': ticket_id,
+                'status': 'en_cours', # 👈 Empêche l'interface de rage-quitter et la force à réessayer 3.5s plus tard !
+                'message': "Connexion temporairement ralentie avec le Cloud IA..."
+            }, status=200)
+            
     return JsonResponse({'detail': 'Method Not Allowed'}, status=405)
 
 # ==========================================
