@@ -106,7 +106,7 @@ def outil_analyser_video(chemin_video: str, consigne_specifique: str = "Fais un 
 
         # 4. Génération de l'analyse
         response = client.models.generate_content(
-            model='gemini-3.5-flash',
+            model='gemini-2.5-flash',
             contents=[video_file, prompt_systeme]
         )
         

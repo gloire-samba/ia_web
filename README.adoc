@@ -6,7 +6,10 @@
 toc::[]
 
 == 📖 Présentation du Projet
-Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, analyser des fichiers vidéos (audio et image), et exécuter des tâches DevOps (tests et déploiement).
+
+🎥 **Voir la démonstration vidéo (2 min) :** link:https://youtu.be/OyQco7WCHl4[Cliquez ici pour voir l'architecture en action sur YouTube]
+
+Cette clé permet au microservice IA d'utiliser Gemini 2.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, analyser des fichiers vidéos (audio et image), et exécuter des tâches DevOps (tests et déploiement).
 L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement les interfaces utilisateurs (deux clones parfaits en Angular et React), les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
 
 == Prérequis
@@ -79,7 +82,7 @@ Le projet est divisé en 5 modules indépendants orchestrés par Docker.
 == 🔑 Tutoriel : Obtenir vos Clés et Configurer les Services externes
 
 === Étape 1 : Obtenir la clé Google Gemini (Pour l'IA)
-Cette clé permet au microservice IA d'utiliser Gemini 3.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, et analyser des fichiers vidéos (audio et image).
+Cette clé permet au microservice IA d'utiliser Gemini 2.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, et analyser des fichiers vidéos (audio et image).
 1. Allez sur https://aistudio.google.com/[Google AI Studio].
 2. Connectez-vous avec un compte Google.
 3. Cliquez sur **"Get API key"** à gauche, puis sur le bouton bleu **"Create API key"**.

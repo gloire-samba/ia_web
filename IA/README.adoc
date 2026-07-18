@@ -11,13 +11,13 @@ link:../README.adoc[⬅️ Retour à la racine du projet]
 
 Ce dossier contient le cœur analytique et créatif de l'application : un **Agent IA autonome** exposé sous forme d'API REST grâce à `FastAPI`. 
 
-Propulsé par la bibliothèque `smolagents` (Hugging Face) et le modèle multimodal **Google Gemini 3.5 Flash**, ce back-end n'est pas un simple chatbot. C'est un véritable assistant de bureau capable de raisonner, de transcrire la voix (microphone), de lire et de créer des fichiers bureautiques, d'analyser des vidéos, de reconnaître des visages, de générer des œuvres d'art, de tester et déployer du code (DevOps), et de naviguer sur le web pour combler ses lacunes.
+Propulsé par la bibliothèque `smolagents` (Hugging Face) et le modèle multimodal **Google Gemini 2.5 Flash**, ce back-end n'est pas un simple chatbot. C'est un véritable assistant de bureau capable de raisonner, de transcrire la voix (microphone), de lire et de créer des fichiers bureautiques, d'analyser des vidéos, de reconnaître des visages, de générer des œuvres d'art, de tester et déployer du code (DevOps), et de naviguer sur le web pour combler ses lacunes.
 
 == ⚙️ Architecture & Moteurs d'Intelligence
 
 Le cerveau s'appuie sur une combinaison de modèles spécialisés :
 
-* **Le Raisonnement (LLM)** : `gemini-3.5-flash` (via `smolagents`), choisi pour sa rapidité et sa capacité à orchestrer plusieurs outils de manière autonome.
+* **Le Raisonnement (LLM)** : `gemini-2.5-flash` (via `smolagents`), choisi pour sa rapidité et sa capacité à orchestrer plusieurs outils de manière autonome.
 * **La Mémoire Documentaire (RAG)** : 
   ** *Plan A (Google)* : `text-embedding-004` pour une vectorisation rapide et précise.
   ** *Plan B (Local)* : Basculement automatique sur `sentence-transformers/all-MiniLM-L6-v2` en cas d'indisponibilité de l'API Google.

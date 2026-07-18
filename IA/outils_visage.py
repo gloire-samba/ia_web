@@ -35,8 +35,10 @@ def sauvegarder_base():
 
 def extraire_embedding(chemin_image):
     """Utilise DeepFace pour transformer un visage en vecteur mathématique."""
-    # enforce_detection=True lève une erreur s'il n'y a pas de visage sur la photo
-    resultats = DeepFace.represent(chemin_image, model_name=MODEL_NAME, enforce_detection=True)
+    # 👉 CORRECTION ICI : On passe enforce_detection à False
+    # Si OpenCV ne voit pas un visage "parfait" (tête penchée, avatar générique...),
+    # il ne plantera plus et forcera le calcul sur l'image entière !
+    resultats = DeepFace.represent(chemin_image, model_name=MODEL_NAME, enforce_detection=False)
     # On prend le premier visage trouvé sur la photo
     embedding = np.array(resultats[0]["embedding"], dtype=np.float32)
     return embedding
@@ -59,7 +61,13 @@ def outil_ajouter_visage(id_visage: int, chemin_image: str, nom_personne: str) -
     except ValueError:
         return "Erreur : Aucun visage détecté sur cette image. Veuillez fournir une photo plus claire."
     except Exception as e:
-        return f"Erreur technique lors de l'ajout : {e}"
+        return (
+            f"ERREUR_CRITIQUE_OUTIL : {str(e)}\n"
+            "INSTRUCTION STRICTE POUR L'AGENT : Tu ne dois plus essayer d'utiliser cet outil. "
+            "La base de données privée de l'application est inaccessible. Tu ne dois SURTOUT PAS essayer d'inventer le nom de la personne. "
+            "Tu dois OBLIGATOIREMENT répondre avec CETTE phrase exacte :\n"
+            "\"⚠️ **La connexion à la base de données biométrique est temporairement interrompue. Je peux observer l'image grâce à ma vision générale, mais je ne peux pas interroger notre système pour identifier formellement cette personne.** ⚠️\""
+        )
 
 # 🛑 PAS DE @tool ICI : C'est Spring qui appelle cette fonction silencieusement !
 def outil_supprimer_visage(id_visage: int) -> str:
@@ -76,7 +84,13 @@ def outil_supprimer_visage(id_visage: int) -> str:
         sauvegarder_base()
         return f"Succès : Visage ID {id_visage} supprimé de FAISS."
     except Exception as e:
-        return f"Erreur de suppression FAISS : {e}"
+        return (
+            f"ERREUR_CRITIQUE_OUTIL : {str(e)}\n"
+            "INSTRUCTION STRICTE POUR L'AGENT : Tu ne dois plus essayer d'utiliser cet outil. "
+            "La base de données privée de l'application est inaccessible. Tu ne dois SURTOUT PAS essayer d'inventer le nom de la personne. "
+            "Tu dois OBLIGATOIREMENT répondre avec CETTE phrase exacte :\n"
+            "\"⚠️ **La connexion à la base de données biométrique est temporairement interrompue. Je peux observer l'image grâce à ma vision générale, mais je ne peux pas interroger notre système pour identifier formellement cette personne.** ⚠️\""
+        )
 
 @tool
 def outil_reconnaitre_visage(chemin_image: str) -> str:
@@ -118,4 +132,10 @@ def outil_reconnaitre_visage(chemin_image: str) -> str:
     except ValueError:
         return "Erreur : Aucun visage humain n'a été détecté sur cette image."
     except Exception as e:
-        return f"Erreur technique lors de la reconnaissance : {e}"
+        return (
+            f"ERREUR_CRITIQUE_OUTIL : {str(e)}\n"
+            "INSTRUCTION STRICTE POUR L'AGENT : Tu ne dois plus essayer d'utiliser cet outil. "
+            "La base de données privée de l'application est inaccessible. Tu ne dois SURTOUT PAS essayer d'inventer le nom de la personne. "
+            "Tu dois OBLIGATOIREMENT répondre avec CETTE phrase exacte :\n"
+            "\"⚠️ **La connexion à la base de données biométrique est temporairement interrompue. Je peux observer l'image grâce à ma vision générale, mais je ne peux pas interroger notre système pour identifier formellement cette personne.** ⚠️\""
+        )

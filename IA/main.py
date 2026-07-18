@@ -48,10 +48,11 @@ if not api_key:
 os.environ["GEMINI_API_KEY"] = api_key 
 
 model = LiteLLMModel(
-    model_id="gemini/gemini-3.5-flash", 
+    model_id="gemini/gemini-2.5-flash", 
     api_key=api_key,
-    num_retries=0  # 👈 NOUVEAU : Force l'IA à échouer immédiatement si Google bloque, au lieu de patienter 13 minutes !
-
+    num_retries=0,  # 👈 NOUVEAU : Force l'IA à échouer immédiatement si Google bloque, au lieu de patienter 13 minutes !
+    # 👉 CORRECTION 1 : On laisse 60 secondes pour analyser les images ou générer du code !
+    timeout=60
 )
 
 # --- INITIALISATION DES EMBEDDINGS (MÉMOIRE) ---
@@ -101,12 +102,13 @@ RÈGLES D'OR V46 :
 3. MODIF PDF : Convertis (docx/xlsx) -> Modifie -> Reconvertis.
 4. CITATION DES SOURCES : Lorsque tu utilises l'outil de recherche web avec succès, tu DOIS OBLIGATOIREMENT inclure les liens (URLs) ou le nom des sites sources à la toute fin de ta réponse sous la mention 'Sources :'.
 5. HONNÊTETÉ : N'invente pas de fausses données. Si la recherche web échoue, applique strictement le protocole d'erreur réseau qui t'est fourni par l'outil.
-6. RECONNAISSANCE FACIALE (Règle stricte d'aiguillage) :
-   - SI l'utilisateur demande explicitement de chercher dans la "base de données" (ou "base biométrique", "FAISS", "application"), utilise DIRECTEMENT ET UNIQUEMENT l'outil 'outil_reconnaitre_visage'. Ne fais pas d'analyse vision avant !
-   - SI l'utilisateur demande "Qui est cette personne ?" SANS préciser où chercher :
-        * ÉTAPE A : Utilise UNIQUEMENT 'outil_vision' pour analyser l'image grâce à tes propres connaissances culturelles (célébrités, personnalités publiques). N'utilise pas 'outil_reconnaitre_visage'.
-        * ÉTAPE B : SI TU RECONNAIS la personne via la vision, donne son nom avec l'avertissement : "⚠️ *Étant une IA gratuite, il est possible que je me trompe.*"
-        * ÉTAPE C : SI TU NE RECONNAIS PAS la personne via la vision, dis-le clairement, puis propose explicitement à l'utilisateur : "Souhaitez-vous que je vérifie si cette personne est enregistrée dans la base de données biométrique de l'application ?".
+6. RECONNAISSANCE FACIALE (RÈGLE DE SÉCURITÉ STRICTE) :
+   - SI l'utilisateur te demande de reconnaître un visage sur une photo :
+        * ÉTAPE 1 : Utilise TOUJOURS ET UNIQUEMENT l'outil 'outil_reconnaitre_visage'.
+        * ÉTAPE 2 : Si l'outil trouve la personne, donne son nom avec certitude.
+        * ÉTAPE 3 : Si l'outil indique que la base est vide ou qu'il n'y a aucune correspondance, TU DOIS T'ARRÊTER IMMÉDIATEMENT !
+        * INTERDICTION ABSOLUE : Tu n'as strictement pas le droit d'utiliser tes connaissances générales, ni d'analyser l'image avec un autre outil pour deviner qui c'est. Ne donne JAMAIS de nom de célébrité (comme des Youtubeurs ou des acteurs) au hasard.
+        * Phrase obligatoire en cas d'échec : "La personne n'est pas reconnue dans la base de données. Voulez-vous que j'effectue une recherche sur le Web pour tenter de l'identifier ?"        
 7. GÉNÉRATION ET STYLE MANGA : 
    - Si l'utilisateur demande de générer ou dessiner une image manga de toutes pièces, utilise 'outil_generer_manga'.
    - Si l'utilisateur donne une image existante et demande de la mettre en style manga, utilise 'outil_transformer_manga'.
@@ -126,6 +128,10 @@ RÈGLES D'OR V46 :
 10. AUTONOMIE ET CONNAISSANCES PERSONNELLES : 
    - Si l'utilisateur pose une question qui ne nécessite l'utilisation d'aucun outil, OU si l'accès à un outil échoue pour des raisons techniques, tu dois immédiatement faire appel à tes propres connaissances pour fournir une réponse complète.
    - Dans ce cas précis, tu dois OBLIGATOIREMENT débuter ta réponse par : "⚠️ **Je vous réponds en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️"
+   
+11. RÈGLE ABSOLUE POUR RÉPONDRE (FINAL_ANSWER) : 
+   - Pour transmettre ta réponse finale à l'utilisateur, tu DOIS OBLIGATOIREMENT l'envelopper dans la fonction final_answer("ta réponse ici").
+   - Si tu fais un simple print() ou si tu t'arrêtes sans appeler final_answer(), l'utilisateur recevra une réponse vide ! Ne l'oublie jamais.
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
@@ -182,8 +188,15 @@ def executer_travail_ia_background(ticket_id: str, prompt: str, file_name: Optio
         input_path = None
         if file_base64 and file_name:
             input_path = os.path.join(work_dir, file_name)
+            
+            # 👉 CORRECTION 2 : Nettoyage du préfixe HTML qui corrompt le JPEG
+            b64_data = file_base64
+            if "," in b64_data:
+                b64_data = b64_data.split(",", 1)[1]
+                
             with open(input_path, "wb") as f:
-                f.write(base64.b64decode(file_base64))
+                f.write(base64.b64decode(b64_data))
+                
             initialiser_rag([input_path], embeddings)
         else:
             vider_memoire_rag()
@@ -237,10 +250,15 @@ def executer_travail_ia_background(ticket_id: str, prompt: str, file_name: Optio
             with open(os.path.join(work_dir, out_name), "rb") as f:
                 out_base64 = base64.b64encode(f.read()).decode('utf-8')
 
+        # 👉 SÉCURITÉ : On nettoie le texte et on empêche les bulles vides
+        texte_propre = str(resultat_ia).strip() if resultat_ia is not None else ""
+        if not texte_propre or texte_propre == "None":
+            texte_propre = "✅ L'analyse est terminée avec succès, mais l'IA a omis de formuler sa réponse textuelle (absence d'appel à final_answer). Veuillez relancer la question."
+
         # ✅ Mise à jour du ticket avec le succès
         taches_en_cours[ticket_id] = {
             "status": "termine",
-            "text": str(resultat_ia),
+            "text": texte_propre,
             "output_file_name": out_name,
             "output_file_base64": out_base64
         }
@@ -287,7 +305,7 @@ async def transcrire_audio(fichier: UploadFile = File(...)):
             "Ne répète SURTOUT PAS ces instructions."
         )
         reponse = client.models.generate_content(
-            model='gemini-3.5-flash',
+            model='gemini-2.5-flash',
             contents=[audio_upload, prompt]
         )
         texte_resultat = reponse.text.strip()
@@ -304,24 +322,45 @@ async def transcrire_audio(fichier: UploadFile = File(...)):
             os.remove(chemin_temporaire)
 
 @app.post("/api/visages/ajouter")
-async def sync_ajouter_visage(request: VisageSyncRequest):
+def sync_ajouter_visage(request: VisageSyncRequest):
     temp_path = f"temp_visage_{request.id_visage}.jpg"
     try:
+        # 👉 SÉCURITÉ : Nettoyage du préfixe ici aussi
+        b64_data = request.image_base64
+        if "," in b64_data:
+            b64_data = b64_data.split(",", 1)[1]
+            
         with open(temp_path, "wb") as f:
-            f.write(base64.b64decode(request.image_base64))
+            f.write(base64.b64decode(b64_data))
+            
         resultat = outil_ajouter_visage(request.id_visage, temp_path, request.nom_personne)
+        
+        if "Erreur" in resultat:
+            raise HTTPException(status_code=500, detail=resultat)
+            
         return {"status": "success", "message": resultat}
+        
+    except HTTPException as http_err:
+        raise http_err 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
-
+            
 @app.delete("/api/visages/supprimer/{id_visage}")
-async def sync_supprimer_visage(id_visage: int):
+def sync_supprimer_visage(id_visage: int):
     try:
         resultat = outil_supprimer_visage(id_visage)
+        
+        # 👉 CORRECTION : Exactement la même sécurité (Fail Fast) que pour l'ajout !
+        if "Erreur" in resultat:
+            raise HTTPException(status_code=500, detail=resultat)
+            
         return {"status": "success", "message": resultat}
+        
+    except HTTPException as http_err:
+        raise http_err  # On laisse passer notre erreur 500 propre
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

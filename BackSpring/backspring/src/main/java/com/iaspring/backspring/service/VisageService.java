@@ -1,5 +1,8 @@
 package com.iaspring.backspring.service;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,7 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Base64; // 👉 IMPORT BASE64
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,17 +27,70 @@ public class VisageService {
     private final Path dossierStockage = Paths.get("uploads/visages");
     private final RestTemplate restTemplate = new RestTemplate();
     
-    // 👉 URL HUGGINGFACE
-    private final String PYTHON_API_URL = "https://elgronaldo-web-ia.hf.space/api/visages"; 
+    // 👉 NOUVEAU : On stocke l'URL dynamique nettoyée
+    private final String iaBaseUrl; 
 
-    public VisageService(VisageRepository visageRepository) {
+    // 👉 CORRECTION : On injecte l'URL depuis application.properties
+    public VisageService(VisageRepository visageRepository, @Value("${python.api.url}") String pythonApiUrl) {
         this.visageRepository = visageRepository;
         try {
             Files.createDirectories(dossierStockage);
         } catch (IOException e) {
             throw new RuntimeException("Impossible de créer le dossier Visages.", e);
         }
+        
+        // Nettoyage de l'URL pour pointer sur la racine de l'IA
+        String baseUrl = pythonApiUrl;
+        if (pythonApiUrl.endsWith("/api/chat")) {
+            baseUrl = pythonApiUrl.replace("/api/chat", "");
+        }
+        this.iaBaseUrl = baseUrl;
     }
+
+    // ==============================================================================
+    // 🔄 SYNCHRONISATION AUTOMATIQUE AU DÉMARRAGE
+    // ==============================================================================
+    @EventListener(ApplicationReadyEvent.class)
+    public void synchroniserFaissAuDemarrage() {
+        List<Visage> visages = visageRepository.findAll();
+        
+        if (visages.isEmpty()) {
+            System.out.println("ℹ️ Aucun visage en base de données. L'IA restera vide.");
+            return;
+        }
+
+        System.out.println("🔄 Démarrage de la synchronisation de " + visages.size() + " visage(s) vers l'IA...");
+
+        for (Visage visage : visages) {
+            try {
+                Path cheminCible = Paths.get(visage.getCheminImage());
+                
+                if (Files.exists(cheminCible)) {
+                    byte[] fileContent = Files.readAllBytes(cheminCible);
+                    String base64Image = Base64.getEncoder().encodeToString(fileContent);
+
+                    Map<String, Object> requestBody = Map.of(
+                        "id_visage", visage.getId(),
+                        "image_base64", base64Image,
+                        "nom_personne", visage.getNom()
+                    );
+                    
+                    // 👉 CORRECTION : Utilisation de iaBaseUrl
+                    restTemplate.postForEntity(iaBaseUrl + "/api/visages/ajouter", requestBody, String.class);
+                    System.out.println("✅ Synchronisé : " + visage.getNom());
+                } else {
+                    System.err.println("⚠️ Image physique introuvable pour : " + visage.getNom());
+                }
+            } catch (Exception e) {
+                System.err.println("❌ Échec de la synchro pour " + visage.getNom() + " : " + e.getMessage());
+            }
+        }
+        System.out.println("🚀 Synchronisation FAISS terminée avec succès !");
+    }
+
+    // ==============================================================================
+    // MÉTHODES CRUD CLASSIQUES
+    // ==============================================================================
 
     public List<Visage> obtenirTousLesVisages() {
         return visageRepository.findAll();
@@ -60,10 +116,11 @@ public class VisageService {
 
             Map<String, Object> requestBody = Map.of(
                 "id_visage", visageSauvegarde.getId(),
-                "image_base64", base64Image, // 👉 Envoi du Base64
+                "image_base64", base64Image,
                 "nom_personne", nom
             );
-            restTemplate.postForEntity(PYTHON_API_URL + "/ajouter", requestBody, String.class);
+            // 👉 CORRECTION : Utilisation de iaBaseUrl
+            restTemplate.postForEntity(iaBaseUrl + "/api/visages/ajouter", requestBody, String.class);
         } catch (Exception e) {
             System.err.println("⚠️ Erreur FAISS lors de l'ajout : " + e.getMessage());
         }
@@ -83,7 +140,8 @@ public class VisageService {
             visageRepository.deleteById(id);
             
             try {
-                restTemplate.delete(PYTHON_API_URL + "/supprimer/" + id);
+                // 👉 CORRECTION : Utilisation de iaBaseUrl
+                restTemplate.delete(iaBaseUrl + "/api/visages/supprimer/" + id);
                 System.out.println("✅ Vecteur ID " + id + " supprimé de l'IA avec succès.");
             } catch (Exception e) {
                 System.err.println("⚠️ Erreur FAISS lors de la suppression : " + e.getMessage());
