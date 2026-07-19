@@ -31,8 +31,9 @@ tokenizers
 # Reconnaissance Faciale et Vecteurs
 deepface
 faiss-cpu
-opencv-python-headless
+opencv-python
 tf-keras
+mtcnn
 
 # Outils Web et API
 requests

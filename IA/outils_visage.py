@@ -14,6 +14,17 @@ MAPPING_FILE = "visages_noms.json"
 MODEL_NAME = "Facenet" # Modèle léger et très performant sur CPU
 DIMENSION = 128 # Facenet produit des vecteurs de taille 128
 
+# 👉 CORRECTION DÉFINITIVE : Pré-téléchargement de Facenet ET de MTCNN
+print("⏳ Pré-téléchargement des modèles IA pour éviter l'embouteillage...")
+try:
+    DeepFace.build_model(MODEL_NAME)
+    # On force le chargement du détecteur MTCNN avec une image noire mathématique
+    image_vide = np.zeros((224, 224, 3), dtype=np.uint8)
+    DeepFace.extract_faces(image_vide, detector_backend="mtcnn", enforce_detection=False)
+    print("✅ Modèles Facenet et MTCNN téléchargés et chargés avec succès en mémoire.")
+except Exception as e:
+    print(f"⚠️ Erreur lors du pré-chargement : {e}")
+
 # Initialisation globale (Le dictionnaire est maintenant un objet {}, pas une liste [])
 if os.path.exists(INDEX_FILE) and os.path.exists(MAPPING_FILE):
     index_visages = faiss.read_index(INDEX_FILE)
@@ -35,10 +46,13 @@ def sauvegarder_base():
 
 def extraire_embedding(chemin_image):
     """Utilise DeepFace pour transformer un visage en vecteur mathématique."""
-    # 👉 CORRECTION ICI : On passe enforce_detection à False
-    # Si OpenCV ne voit pas un visage "parfait" (tête penchée, avatar générique...),
-    # il ne plantera plus et forcera le calcul sur l'image entière !
-    resultats = DeepFace.represent(chemin_image, model_name=MODEL_NAME, enforce_detection=False)
+    # 👉 CORRECTION ICI : On utilise le détecteur MTCNN au lieu d'OpenCV !
+    resultats = DeepFace.represent(
+        chemin_image, 
+        model_name=MODEL_NAME, 
+        enforce_detection=False,
+        detector_backend="mtcnn" 
+    )
     # On prend le premier visage trouvé sur la photo
     embedding = np.array(resultats[0]["embedding"], dtype=np.float32)
     return embedding
@@ -58,16 +72,12 @@ def outil_ajouter_visage(id_visage: int, chemin_image: str, nom_personne: str) -
         noms_visages[str(id_visage)] = nom_personne
         sauvegarder_base()
         return f"Succès : Le visage de {nom_personne} (ID {id_visage}) a été encodé et ajouté à FAISS."
-    except ValueError:
-        return "Erreur : Aucun visage détecté sur cette image. Veuillez fournir une photo plus claire."
     except Exception as e:
-        return (
-            f"ERREUR_CRITIQUE_OUTIL : {str(e)}\n"
-            "INSTRUCTION STRICTE POUR L'AGENT : Tu ne dois plus essayer d'utiliser cet outil. "
-            "La base de données privée de l'application est inaccessible. Tu ne dois SURTOUT PAS essayer d'inventer le nom de la personne. "
-            "Tu dois OBLIGATOIREMENT répondre avec CETTE phrase exacte :\n"
-            "\"⚠️ **La connexion à la base de données biométrique est temporairement interrompue. Je peux observer l'image grâce à ma vision générale, mais je ne peux pas interroger notre système pour identifier formellement cette personne.** ⚠️\""
-        )
+        # 👉 CORRECTION CRITIQUE : On arrête de masquer l'erreur !
+        # On affiche le vrai message brut dans les logs de Hugging Face
+        print(f"💥 CRASH CRITIQUE SYNCHRO VISAGE ({nom_personne}) : {str(e)}")
+        # On renvoie l'erreur brute à Spring/Django pour la voir sur ton PC
+        return f"Erreur interne lors de l'extraction : {str(e)}"
 
 # 🛑 PAS DE @tool ICI : C'est Spring qui appelle cette fonction silencieusement !
 def outil_supprimer_visage(id_visage: int) -> str:

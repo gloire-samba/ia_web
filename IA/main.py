@@ -130,8 +130,11 @@ RÈGLES D'OR V46 :
    - Dans ce cas précis, tu dois OBLIGATOIREMENT débuter ta réponse par : "⚠️ **Je vous réponds en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️"
    
 11. RÈGLE ABSOLUE POUR RÉPONDRE (FINAL_ANSWER) : 
-   - Pour transmettre ta réponse finale à l'utilisateur, tu DOIS OBLIGATOIREMENT l'envelopper dans la fonction final_answer("ta réponse ici").
-   - Si tu fais un simple print() ou si tu t'arrêtes sans appeler final_answer(), l'utilisateur recevra une réponse vide ! Ne l'oublie jamais.
+   - Pour transmettre ta réponse finale, tu DOIS OBLIGATOIREMENT l'envelopper dans final_answer() ET la placer dans un bloc de code.
+   - Exemple obligatoire exact :
+   <code>
+   final_answer("Votre réponse ici")
+   </code>
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
