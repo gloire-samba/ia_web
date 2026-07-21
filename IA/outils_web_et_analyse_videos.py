@@ -1,6 +1,7 @@
 from smolagents import tool
 import os
 import time
+import shutil # 👉 AJOUT INDISPENSABLE ICI
 from google import genai
 from tavily import TavilyClient
 
@@ -75,8 +76,20 @@ def outil_analyser_video(chemin_video: str, consigne_specifique: str = "Fais un 
         client = genai.Client(api_key=api_key)
         
         # 1. Envoi de la vidéo au serveur de Google pour analyse
-        print(f"🎬 Envoi de la vidéo en cours d'analyse ({os.path.basename(chemin_video)})...")
-        video_file = client.files.upload(file=chemin_video)
+        print("🎬 Envoi de la vidéo en cours d'analyse...")
+        
+        # 👉 CORRECTION DÉFINITIVE : Création d'une copie temporaire sans accents pour tromper le SDK Google
+        dossier = os.path.dirname(chemin_video)
+        extension = os.path.splitext(chemin_video)[1]
+        chemin_temporaire_ascii = os.path.join(dossier, f"upload_temporaire{extension}")
+        
+        shutil.copy2(chemin_video, chemin_temporaire_ascii)
+        
+        # On donne le fichier propre à Google
+        video_file = client.files.upload(file=chemin_temporaire_ascii)
+        
+        # On supprime la copie temporaire immédiatement après
+        os.remove(chemin_temporaire_ascii)
         
         # 2. Attente de la fin du traitement par Google (nécessaire pour la vidéo)
         while video_file.state.name == "PROCESSING":

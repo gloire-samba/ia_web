@@ -15,6 +15,7 @@ reportlab
 pdf2image
 xlsxwriter
 pytest
+pdf2docx
 
 # Langchain et IA
 langchain

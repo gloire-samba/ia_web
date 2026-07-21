@@ -249,6 +249,10 @@ def executer_travail_ia_background(ticket_id: str, prompt: str, file_name: Optio
         ]
         
         if generated_files:
+            # 👉 CORRECTION : On trie les fichiers par date de modification (du plus récent au plus ancien)
+            generated_files.sort(key=lambda f: os.path.getmtime(os.path.join(work_dir, f)), reverse=True)
+            
+            # On prend le fichier le plus récent (le PDF converti en dernier)
             out_name = generated_files[0] 
             with open(os.path.join(work_dir, out_name), "rb") as f:
                 out_base64 = base64.b64encode(f.read()).decode('utf-8')

@@ -42,7 +42,7 @@ def createur_word(nom_fichier: str, contenu: str, style: str = "NORMAL", chemin_
 @tool
 def modificateur_word(nom_fichier: str, texte_ancrage: str, texte_remplacement: str, action: str = "AJOUTER_FIN", chemin_image: str = None) -> str:
     """
-    Modifie un fichier Word existant.
+    Modifie un fichier Word existant sans détruire la mise en page.
     Args:
         nom_fichier: Le fichier à modifier.
         texte_ancrage: Le texte à chercher (pour remplacement).
@@ -53,15 +53,35 @@ def modificateur_word(nom_fichier: str, texte_ancrage: str, texte_remplacement: 
     try:
         doc = Document(nom_fichier)
         if action == "REMPLACER":
-            for p in doc.paragraphs:
-                if texte_ancrage and texte_ancrage in p.text:
-                    p.text = p.text.replace(texte_ancrage, texte_remplacement)
+            
+            # Fonction interne pour remplacer délicatement sans écraser le style XML
+            def remplacer_texte_delicatement(paragraphes):
+                for p in paragraphes:
+                    if texte_ancrage in p.text:
+                        # On essaie d'abord de remplacer dans les "runs" (les blocs de style)
+                        for run in p.runs:
+                            if texte_ancrage in run.text:
+                                run.text = run.text.replace(texte_ancrage, texte_remplacement)
+                        # Si le texte est à cheval sur plusieurs runs, on force le remplacement brutal
+                        if texte_ancrage in p.text:
+                            p.text = p.text.replace(texte_ancrage, texte_remplacement)
+
+            # 1. Fouiller les paragraphes classiques
+            remplacer_texte_delicatement(doc.paragraphs)
+            
+            # 2. Fouiller les Tableaux (CRUCIAL pour les PDF convertis !)
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        remplacer_texte_delicatement(cell.paragraphs)
         else:
             doc.add_paragraph(texte_remplacement)
+            
         if chemin_image: doc.add_picture(chemin_image, width=DocxInches(4))
         doc.save(nom_fichier)
-        return "Word Modifié."
-    except Exception as e: return f"Erreur Modif Word: {e}"
+        return "Word Modifié avec succès."
+    except Exception as e: 
+        return f"Erreur Modif Word: {e}"
     
 # ==============================================================================
 # OUTILS EXCEL
@@ -265,11 +285,25 @@ def convertisseur_pdf_vers_editable(chemin_source: str, type_sortie: str = "docx
         dossier_sortie = os.path.dirname(abs_in)
         nom_sortie = os.path.splitext(chemin_source)[0] + "." + type_sortie
         
-        args = ['libreoffice', '--headless', '--convert-to', type_sortie, abs_in, '--outdir', dossier_sortie]
-        if type_sortie == 'xlsx': args.append('--infilter=CSV:44,34,76')
-        subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+        if type_sortie.lower() == "docx":
+            # 👉 CORRECTION : On utilise la librairie spécialisée pdf2docx
+            from pdf2docx import Converter
+            cv = Converter(abs_in)
+            cv.convert(nom_sortie)
+            cv.close()
+        else:
+            # LibreOffice reste indispensable pour le reste (xlsx, etc.)
+            args = ['libreoffice', '--headless', '--convert-to', type_sortie, abs_in, '--outdir', dossier_sortie]
+            if type_sortie == 'xlsx': args.append('--infilter=CSV:44,34,76')
+            subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+            
+        # 👉 FILET DE SÉCURITÉ : On vérifie que le fichier a vraiment été créé !
+        if not os.path.exists(nom_sortie):
+            return f"Erreur : L'outil n'a pas pu créer le fichier {nom_sortie}."
+            
         return f"Succès. Fichier converti en : {nom_sortie}."
-    except Exception as e: return f"Erreur Conversion: {e}"
+    except Exception as e: 
+        return f"Erreur Conversion: {e}"
 
 @tool
 def convertisseur_editable_vers_pdf(chemin_source: str) -> str:
@@ -281,7 +315,20 @@ def convertisseur_editable_vers_pdf(chemin_source: str) -> str:
     try:
         abs_in = os.path.abspath(chemin_source)
         dossier_sortie = os.path.dirname(abs_in)
+        base_name = os.path.splitext(os.path.basename(abs_in))[0]
+        
+        # Le nom que LibreOffice va donner par défaut
+        pdf_genere_par_lo = os.path.join(dossier_sortie, base_name + ".pdf")
+        # 👉 LE CORRECTIF : Le nouveau nom pour échapper au filtre "if f != file_name" de main.py
+        pdf_final_renomme = os.path.join(dossier_sortie, base_name + "_modifie_IA.pdf")
         
         subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', abs_in, '--outdir', dossier_sortie], check=True, stdout=subprocess.DEVNULL)
-        return "Succès. Reconverti en PDF."
-    except Exception as e: return f"Erreur Conversion: {e}"
+        
+        # On renomme le fichier immédiatement après la conversion
+        if os.path.exists(pdf_genere_par_lo):
+            os.rename(pdf_genere_par_lo, pdf_final_renomme)
+            return f"Succès. Reconverti en PDF sous le nom : {pdf_final_renomme}"
+            
+        return "Erreur : Le fichier PDF n'a pas été généré."
+    except Exception as e: 
+        return f"Erreur Conversion: {e}"

@@ -22,7 +22,9 @@ USER user
 # 5. Configuration des variables d'environnement basiques
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=utf-8 \
+    LANG=C.UTF-8
 
 # 6. Installation de tes bibliothèques Python (FastAPI, smolagents, docx, openpyxl, etc.)
 COPY --chown=user:user requirements.txt .
