@@ -7,7 +7,7 @@ toc::[]
 
 == 📖 Présentation du Projet
 
-🎥 **Voir la démonstration vidéo (2 min) :** link:https://youtu.be/OyQco7WCHl4[Cliquez ici pour voir l'architecture en action sur YouTube]
+🎥 **Voir la démonstration vidéo (2 min) :** link:https://youtu.be/nESt4XXKj5A[Cliquez ici pour voir l'architecture en action sur YouTube]
 
 Cette clé permet au microservice IA d'utiliser Gemini 2.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, analyser des fichiers vidéos (audio et image), et exécuter des tâches DevOps (tests et déploiement).
 L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement les interfaces utilisateurs (deux clones parfaits en Angular et React), les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
