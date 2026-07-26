@@ -8,11 +8,12 @@ import type { StatusResponse } from '../../models/status-response';
 export const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentPrompt, setCurrentPrompt] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // 👉 CORRECTION : Tableau de fichiers
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false); 
-  
-  // 👉 NOUVEAU : Message de chargement dynamique
   const [loadingMessage, setLoadingMessage] = useState("L'IA démarre la tâche...");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -26,7 +27,6 @@ export const Chat: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Nettoyage de l'intervalle si le composant est démonté
   useEffect(() => {
     return () => {
       if (pollingIntervalRef.current) {
@@ -45,16 +45,24 @@ export const Chat: React.FC = () => {
   const onFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 50 * 1024 * 1024) {
-        alert("Le fichier est trop volumineux. Veuillez choisir un fichier de moins de 50 Mo.");
+      if (selectedFiles.length >= 2) {
+        alert("Vous ne pouvez joindre que 2 fichiers maximum.");
         event.target.value = '';
         return;
       }
-      setSelectedFile(file);
+      if (file.size > 15 * 1024 * 1024) {
+        alert("Le fichier est trop volumineux. Veuillez choisir un fichier de moins de 15 Mo.");
+        event.target.value = '';
+        return;
+      }
+      setSelectedFiles(prev => [...prev, file]);
+      event.target.value = '';
     }
   };
 
-  const removeFile = () => setSelectedFile(null);
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleError = (message: string) => {
     setMessages(prev => [...prev, { sender: 'ia', text: message }]);
@@ -62,7 +70,6 @@ export const Chat: React.FC = () => {
     stopPolling();
   };
 
-  // 2. Boucle de vérification automatique toutes les 3.5 secondes
   const startPolling = (ticketId: string) => {
     stopPolling(); 
 
@@ -84,7 +91,6 @@ export const Chat: React.FC = () => {
         } else if (response.status === 'erreur') {
           handleError(`❌ Erreur de l'IA : ${response.error}`);
         } else {
-          // 👉 CORRECTION : Un message unique, élégant et passe-partout !
           setLoadingMessage("L'IA réfléchit et prépare sa réponse... ⚙️");
         }
       } catch (err: any) {
@@ -94,11 +100,10 @@ export const Chat: React.FC = () => {
     }, 3500);
   };
 
-  // 1. Démarrage et envoi de la requête
   const sendMessage = async (texteForce?: string | React.MouseEvent | React.KeyboardEvent) => {
     const texteAEnvoyer = typeof texteForce === 'string' ? texteForce : currentPrompt;
     
-    if (!texteAEnvoyer.trim() && !selectedFile) {
+    if (!texteAEnvoyer.trim() && selectedFiles.length === 0) {
       setIsLoading(false); 
       return;
     }
@@ -106,27 +111,29 @@ export const Chat: React.FC = () => {
     setIsLoading(true);
     setLoadingMessage("Envoi de la requête et création du ticket... 🎫");
 
+    const fileNames = selectedFiles.map(f => f.name).join(', ');
+
     const userMessage: Message = {
       sender: 'user',
       text: texteAEnvoyer,
-      fileName: selectedFile?.name
+      fileName: fileNames || undefined
     };
     setMessages(prev => [...prev, userMessage]);
 
-    const request: any = { prompt: texteAEnvoyer };
-    if (selectedFile) {
-      request.file_name = selectedFile.name;
-      request.file_base64 = await chatService.convertFileToBase64(selectedFile);
+    const request: any = { prompt: texteAEnvoyer, fichiers: [] };
+    
+    for (const file of selectedFiles) {
+      const base64 = await chatService.convertFileToBase64(file);
+      request.fichiers.push({ file_name: file.name, file_base64: base64 });
     }
 
     setCurrentPrompt('');
-    setSelectedFile(null);
+    setSelectedFiles([]);
 
     try {
-      // On reçoit le ticket instantanément
       const ticket = await chatService.sendMessage(request);
       if (ticket && ticket.ticket_id) {
-        setLoadingMessage("L'IA travaille en tâche de fond (Git, tests, code)... ⚙️");
+        setLoadingMessage("L'IA analyse la demande en tâche de fond... ⚙️");
         startPolling(ticket.ticket_id);
       } else {
         handleError("Erreur : Aucun ticket reçu du serveur.");
@@ -169,7 +176,7 @@ export const Chat: React.FC = () => {
         if (data.texte && data.texte !== 'SILENCE') {
           const nouveauTexte = currentPrompt + (currentPrompt ? ' ' : '') + data.texte;
           setCurrentPrompt(''); 
-          await sendMessage(nouveauTexte); // Envoi automatique
+          await sendMessage(nouveauTexte);
         } else {
           setIsLoading(false);
         }
@@ -226,10 +233,16 @@ export const Chat: React.FC = () => {
       </div>
 
       <div className="input-area">
-        {selectedFile && (
-          <div className="selected-file-badge">
-            📎 {selectedFile.name}
-            <button onClick={removeFile}>❌</button>
+        
+        {/* Conteneur flex pour afficher plusieurs fichiers */}
+        {selectedFiles.length > 0 && (
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+            {selectedFiles.map((file, index) => (
+              <div key={index} className="selected-file-badge" style={{ marginBottom: 0 }}>
+                📎 {file.name}
+                <button onClick={() => removeFile(index)}>❌</button>
+              </div>
+            ))}
           </div>
         )}
 

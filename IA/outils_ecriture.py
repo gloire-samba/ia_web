@@ -9,6 +9,11 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from smolagents import tool
 
+def generer_nom_modifie(chemin: str) -> str:
+    """Génère le nom de fichier avec le suffixe _modified."""
+    base, ext = os.path.splitext(chemin)
+    return f"{base}_modified{ext}"
+
 # ==============================================================================
 # OUTILS WORD
 # ==============================================================================
@@ -53,23 +58,16 @@ def modificateur_word(nom_fichier: str, texte_ancrage: str, texte_remplacement: 
     try:
         doc = Document(nom_fichier)
         if action == "REMPLACER":
-            
-            # Fonction interne pour remplacer délicatement sans écraser le style XML
             def remplacer_texte_delicatement(paragraphes):
                 for p in paragraphes:
                     if texte_ancrage in p.text:
-                        # On essaie d'abord de remplacer dans les "runs" (les blocs de style)
                         for run in p.runs:
                             if texte_ancrage in run.text:
                                 run.text = run.text.replace(texte_ancrage, texte_remplacement)
-                        # Si le texte est à cheval sur plusieurs runs, on force le remplacement brutal
                         if texte_ancrage in p.text:
                             p.text = p.text.replace(texte_ancrage, texte_remplacement)
 
-            # 1. Fouiller les paragraphes classiques
             remplacer_texte_delicatement(doc.paragraphs)
-            
-            # 2. Fouiller les Tableaux (CRUCIAL pour les PDF convertis !)
             for table in doc.tables:
                 for row in table.rows:
                     for cell in row.cells:
@@ -78,8 +76,11 @@ def modificateur_word(nom_fichier: str, texte_ancrage: str, texte_remplacement: 
             doc.add_paragraph(texte_remplacement)
             
         if chemin_image: doc.add_picture(chemin_image, width=DocxInches(4))
-        doc.save(nom_fichier)
-        return "Word Modifié avec succès."
+        
+        # 👉 CHANGEMENT : Sauvegarde avec _modified
+        nouveau_nom = generer_nom_modifie(nom_fichier)
+        doc.save(nouveau_nom)
+        return f"Word Modifié avec succès. Fichier : {nouveau_nom}"
     except Exception as e: 
         return f"Erreur Modif Word: {e}"
     
@@ -142,8 +143,11 @@ def modificateur_excel(nom_fichier: str, cible: str, valeur: str, action: str = 
         if style == "TITRE":
              c.font = Font(bold=True, color="FFFFFF", size=12)
              c.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        wb.save(nom_fichier)
-        return "Excel Modifié."
+             
+        # 👉 CHANGEMENT : Sauvegarde avec _modified
+        nouveau_nom = generer_nom_modifie(nom_fichier)
+        wb.save(nouveau_nom)
+        return f"Excel Modifié avec succès : {nouveau_nom}"
     except Exception as e: return f"Erreur Modif Excel: {e}"
     
 # ==============================================================================
@@ -248,8 +252,10 @@ def modificateur_ppt(nom_fichier: str, numero_slide: str, nouveau_texte: str, ch
                 p.font.size = Pt(12)
                 cursor_y += Inches(height_needed)
 
-        prs.save(nom_fichier)
-        return "PPT Modifié (Slide reconstruite + Overflow géré)."
+        # 👉 CHANGEMENT : Sauvegarde avec _modified
+        nouveau_nom = generer_nom_modifie(nom_fichier)
+        prs.save(nouveau_nom)
+        return f"PPT Modifié avec succès : {nouveau_nom}"
     except Exception as e: return f"Erreur Modif PPT: {e}"
     
 # ==============================================================================
@@ -267,9 +273,18 @@ def editeur_texte_csv(nom_fichier: str, contenu: str, mode: str = "AJOUTER_FIN")
         mode: 'AJOUTER_FIN' (ajoute à la fin) ou 'ECRASER' (remplace tout).
     """
     try:
-        m = 'w' if mode=="ECRASER" else 'a'
-        with open(nom_fichier, m, encoding='utf-8') as f: f.write("\n"+contenu)
-        return "Fichier Texte Modifié."
+        nouveau_nom = generer_nom_modifie(nom_fichier)
+        
+        # On lit le contenu existant si on veut juste ajouter à la fin
+        original_content = ""
+        if mode == "AJOUTER_FIN" and os.path.exists(nom_fichier):
+            with open(nom_fichier, 'r', encoding='utf-8') as f:
+                original_content = f.read() + "\n"
+                
+        with open(nouveau_nom, 'w', encoding='utf-8') as f: 
+            f.write(original_content + contenu)
+            
+        return f"Fichier Texte Modifié avec succès : {nouveau_nom}"
     except Exception as e: return f"Erreur TXT: {e}"
 
 @tool
@@ -286,18 +301,15 @@ def convertisseur_pdf_vers_editable(chemin_source: str, type_sortie: str = "docx
         nom_sortie = os.path.splitext(chemin_source)[0] + "." + type_sortie
         
         if type_sortie.lower() == "docx":
-            # 👉 CORRECTION : On utilise la librairie spécialisée pdf2docx
             from pdf2docx import Converter
             cv = Converter(abs_in)
             cv.convert(nom_sortie)
             cv.close()
         else:
-            # LibreOffice reste indispensable pour le reste (xlsx, etc.)
             args = ['libreoffice', '--headless', '--convert-to', type_sortie, abs_in, '--outdir', dossier_sortie]
             if type_sortie == 'xlsx': args.append('--infilter=CSV:44,34,76')
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
             
-        # 👉 FILET DE SÉCURITÉ : On vérifie que le fichier a vraiment été créé !
         if not os.path.exists(nom_sortie):
             return f"Erreur : L'outil n'a pas pu créer le fichier {nom_sortie}."
             
@@ -317,14 +329,11 @@ def convertisseur_editable_vers_pdf(chemin_source: str) -> str:
         dossier_sortie = os.path.dirname(abs_in)
         base_name = os.path.splitext(os.path.basename(abs_in))[0]
         
-        # Le nom que LibreOffice va donner par défaut
         pdf_genere_par_lo = os.path.join(dossier_sortie, base_name + ".pdf")
-        # 👉 LE CORRECTIF : Le nouveau nom pour échapper au filtre "if f != file_name" de main.py
         pdf_final_renomme = os.path.join(dossier_sortie, base_name + "_modifie_IA.pdf")
         
         subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', abs_in, '--outdir', dossier_sortie], check=True, stdout=subprocess.DEVNULL)
         
-        # On renomme le fichier immédiatement après la conversion
         if os.path.exists(pdf_genere_par_lo):
             os.rename(pdf_genere_par_lo, pdf_final_renomme)
             return f"Succès. Reconverti en PDF sous le nom : {pdf_final_renomme}"

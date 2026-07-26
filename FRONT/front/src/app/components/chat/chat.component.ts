@@ -23,15 +23,16 @@ export class ChatComponent implements OnDestroy {
 
   messages: Message[] = [];
   currentPrompt: string = '';
-  selectedFile: File | null = null;
+  
+  // 👉 CORRECTION : On passe à un tableau de fichiers
+  selectedFiles: File[] = [];
+  
   isLoading: boolean = false;
   isRecording: boolean = false;
   
-  // 👉 NOUVEAU : Gestion du message de chargement dynamique et du polling
   loadingMessage: string = "L'IA démarre la tâche...";
   private pollingSub?: Subscription;
 
-  // Sécurité : on arrête la vérification si l'utilisateur quitte la page
   ngOnDestroy() {
     this.stopPolling();
   }
@@ -57,7 +58,7 @@ export class ChatComponent implements OnDestroy {
           next: (data) => {
             if (data.texte && data.texte !== 'SILENCE') {
               this.currentPrompt += (this.currentPrompt ? ' ' : '') + data.texte;
-              this.sendMessage(); // Envoi automatique après la voix
+              this.sendMessage(); 
             } else {
               this.isLoading = false;
             }
@@ -84,50 +85,62 @@ export class ChatComponent implements OnDestroy {
   onFileSelected(event: any) {
     const file: File = event.target.files[0];
     if (file) {
-      if (file.size > 50 * 1024 * 1024) {
-        alert("Le fichier est trop volumineux. Veuillez choisir un fichier de moins de 50 Mo.");
+      // 👉 VERROU 1 : 2 Fichiers maximum
+      if (this.selectedFiles.length >= 2) {
+        alert("Vous ne pouvez joindre que 2 fichiers maximum.");
+        event.target.value = '';
+        return;
+      }
+      // 👉 VERROU 2 : 15 Mo maximum pour la rapidité
+      if (file.size > 15 * 1024 * 1024) {
+        alert("Le fichier est trop volumineux. Veuillez choisir un fichier de moins de 15 Mo.");
         event.target.value = ''; 
         return; 
       }
-      this.selectedFile = file;
+      this.selectedFiles.push(file);
+      event.target.value = ''; // On réinitialise l'input pour pouvoir resélectionner
     }
   }
 
-  removeFile() {
-    this.selectedFile = null;
+  removeFile(index: number) {
+    this.selectedFiles.splice(index, 1);
   }
 
   async sendMessage() {
-    if (!this.currentPrompt.trim() && !this.selectedFile) return;
+    if (!this.currentPrompt.trim() && this.selectedFiles.length === 0) return;
 
     this.isLoading = true;
     this.loadingMessage = "Envoi de la requête et création du ticket... 🎫";
 
-    // On sauvegarde le texte avant de vider le champ
     const texteEnvoye = this.currentPrompt;
+    
+    // Noms combinés pour l'affichage de la bulle
+    const fileNames = this.selectedFiles.map(f => f.name).join(', ');
 
     this.messages.push({
       sender: 'user',
       text: texteEnvoye,
-      fileName: this.selectedFile?.name
+      fileName: fileNames ? fileNames : undefined
     });
 
-    const request: ChatRequest = { prompt: texteEnvoye };
+    const request: any = { prompt: texteEnvoye, fichiers: [] };
     
-    if (this.selectedFile) {
-      request.file_name = this.selectedFile.name;
-      request.file_base64 = await this.chatService.convertFileToBase64(this.selectedFile);
+    // On convertit tous les fichiers dans la boucle
+    for (const file of this.selectedFiles) {
+      const base64 = await this.chatService.convertFileToBase64(file);
+      request.fichiers.push({
+        file_name: file.name,
+        file_base64: base64
+      });
     }
 
     this.currentPrompt = '';
-    this.selectedFile = null;
+    this.selectedFiles = [];
 
-    // 1. Appel initial : on reçoit le ticket en < 0.5 sec
     this.chatService.sendMessage(request).subscribe({
       next: (ticket) => {
         if (ticket && ticket.ticket_id) {
           this.loadingMessage = "L'IA analyse la demande en tâche de fond... ⚙️";
-          // 👉 ON PASSE LE TEXTE À LA BOUCLE DE POLLING :
           this.startPolling(ticket.ticket_id);
         } else {
           this.handleError("Erreur : Aucun ticket reçu du serveur.");
@@ -139,7 +152,6 @@ export class ChatComponent implements OnDestroy {
     });
   }
 
-  // 👉 CORRECTION : On accepte le paramètre prompt pour adapter le message
   private startPolling(ticketId: string) {
     this.stopPolling();
 
@@ -164,7 +176,6 @@ export class ChatComponent implements OnDestroy {
           this.isLoading = false;
           this.stopPolling();
         } else {
-          // 👉 CORRECTION : Un message unique, élégant et passe-partout !
           this.loadingMessage = "L'IA réfléchit et prépare sa réponse... ⚙️";
         }
       },

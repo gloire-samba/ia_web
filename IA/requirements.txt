@@ -10,6 +10,7 @@ openpyxl
 python-docx
 python-pptx
 pymupdf4llm
+PyMuPDF
 docx2txt
 reportlab
 pdf2image

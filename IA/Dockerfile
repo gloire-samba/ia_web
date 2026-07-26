@@ -1,16 +1,16 @@
 # 1. On part d'un Linux léger avec Python 3.10 (Obligatoire pour faire tourner FastAPI et Smolagents)
 FROM python:3.10-slim
 
-# 2. On installe LibreOffice, les outils PDF (poppler), curl ET les dépendances système pour OpenCV (DeepFace)
+# 2. On installe LibreOffice, les outils PDF (poppler), curl, ffmpeg (pour compression) ET les dépendances système pour OpenCV (DeepFace)
 USER root
 RUN apt-get update && apt-get install -y \
     libreoffice \
     poppler-utils \
     curl \
+    ffmpeg \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
-
 
 # 3. Création du dossier de travail et gestion stricte des permissions
 WORKDIR /app

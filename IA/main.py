@@ -4,7 +4,7 @@ import shutil
 import uuid
 import tempfile
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,11 +21,14 @@ from outils_ecriture import (
     createur_ppt, modificateur_ppt, editeur_texte_csv, 
     convertisseur_pdf_vers_editable, convertisseur_editable_vers_pdf
 )
-from outils_web_et_analyse_videos import web_search, outil_analyser_video
+from outils_web_et_analyse_videos import web_search, outil_analyser_video, outil_analyser_audio
 from outils_visage import outil_ajouter_visage, outil_reconnaitre_visage, outil_supprimer_visage
 from outils_style_manga import outil_generer_manga, outil_transformer_manga
 # 👉 CRITIQUE : On importe UNIQUEMENT l'outil de commit/push (pas le terminal brut !)
 from outils_developpement import outil_git_commit_et_push
+from outils_compression import outil_compresser_image, outil_compresser_pdf, outil_compresser_video, outil_compresser_audio
+# 👉 NOUVEAU : Import des outils de fusion et séparation
+from outils_fusion_separation import outil_fusionner_pdf, outil_separer_pdf
 
 # ==============================================================================
 # 🛡️ BOUCLIER ANTI-CRASH / ANTI-SEGFAULT (OBLIGATOIRE SUR CPU)
@@ -85,10 +88,12 @@ agent = CodeAgent(
         outil_rag, outil_vision, createur_word, modificateur_word, 
         createur_excel, modificateur_excel, createur_ppt, modificateur_ppt, 
         editeur_texte_csv, convertisseur_pdf_vers_editable, 
-        convertisseur_editable_vers_pdf, web_search, outil_analyser_video,
+        convertisseur_editable_vers_pdf, web_search, outil_analyser_video, outil_analyser_audio,
         outil_reconnaitre_visage, 
         outil_generer_manga, outil_transformer_manga,
-        outil_git_commit_et_push 
+        outil_git_commit_et_push,
+        outil_compresser_image, outil_compresser_pdf, outil_compresser_video, outil_compresser_audio,
+        outil_fusionner_pdf, outil_separer_pdf
     ],
     model=model,
     additional_authorized_imports=imports_autorises,
@@ -99,7 +104,7 @@ consigne = """
 RÈGLES D'OR V46 :
 1. ANALYSE LA DEMANDE : Word? Excel? PPT? TXT?
 2. MODIF PPT : Utilise 'modificateur_ppt'. Il vide la slide et la recrée proprement avec le contenu final (Image + Texte + Overflow).
-3. MODIF PDF : Convertis (docx/xlsx) -> Modifie -> Reconvertis.
+3. MODIFICATIONS : Lors de toute modification d'un fichier (Word, Excel, PPT, TXT) ou d'une compression, les outils génèrent automatiquement le nouveau fichier avec le suffixe '_modified' ou '_compressed'. Ne modifie jamais manuellement le nom renvoyé par l'outil.
 4. CITATION DES SOURCES : Lorsque tu utilises l'outil de recherche web avec succès, tu DOIS OBLIGATOIREMENT inclure les liens (URLs) ou le nom des sites sources à la toute fin de ta réponse sous la mention 'Sources :'.
 5. HONNÊTETÉ : N'invente pas de fausses données. Si la recherche web échoue, applique strictement le protocole d'erreur réseau qui t'est fourni par l'outil.
 6. RECONNAISSANCE FACIALE (RÈGLE DE SÉCURITÉ STRICTE) :
@@ -113,9 +118,10 @@ RÈGLES D'OR V46 :
    - Si l'utilisateur demande de générer ou dessiner une image manga de toutes pièces, utilise 'outil_generer_manga'.
    - Si l'utilisateur donne une image existante et demande de la mettre en style manga, utilise 'outil_transformer_manga'.
    - SI l'utilisateur n'a pas explicitement ordonné d'utiliser ces outils, tu dois précéder ta réponse de cette phrase exacte : "Étant une IA gratuite, le résultat de la génération d'image ne va pas forcément être parfait."
-8. ANALYSE VIDÉO :
+8. ANALYSE VIDÉO ET AUDIO :
    - Si l'utilisateur te demande d'analyser, décrire ou résumer une vidéo, utilise OBLIGATOIREMENT l'outil 'outil_analyser_video'.
-   - Tu dois TOUJOURS précéder ta réponse d'analyse vidéo par cette phrase exacte : "⚠️ *Étant une IA gratuite, il est possible que je me trompe dans l'analyse ou que j'omette certains détails de la vidéo.*"
+   - Si l'utilisateur te demande d'analyser, transcrire ou résumer un fichier vocal/audio, utilise OBLIGATOIREMENT l'outil 'outil_analyser_audio'.
+   - Tu dois TOUJOURS précéder ta réponse d'analyse par cette phrase exacte : "⚠️ *Étant une IA gratuite, il est possible que je me trompe dans l'analyse ou que j'omette certains détails.*"
    
 9. TESTS UNITAIRES ET DÉPLOIEMENT GIT (RÈGLE STRICTE CI/CD) :
    - RÔLE DE L'IA : Tu es un développeur. Ton rôle est de rédiger le code propre ET de générer les fichiers de tests unitaires complets correspondant au langage (ex: fichiers .py pour pytest, .test.jsx pour React, .spec.ts pour Angular, .java pour JUnit...).
@@ -128,13 +134,17 @@ RÈGLES D'OR V46 :
 10. AUTONOMIE ET CONNAISSANCES PERSONNELLES : 
    - Si l'utilisateur pose une question qui ne nécessite l'utilisation d'aucun outil, OU si l'accès à un outil échoue pour des raisons techniques, tu dois immédiatement faire appel à tes propres connaissances pour fournir une réponse complète.
    - Dans ce cas précis, tu dois OBLIGATOIREMENT débuter ta réponse par : "⚠️ **Je vous réponds en utilisant mes connaissances personnelles. Veuillez garder à l'esprit que je suis un modèle gratuit et qu'il est possible que je me trompe.** ⚠️"
-   
+
 11. RÈGLE ABSOLUE POUR RÉPONDRE (FINAL_ANSWER) : 
    - Pour transmettre ta réponse finale, tu DOIS OBLIGATOIREMENT l'envelopper dans final_answer() ET la placer dans un bloc de code.
    - Exemple obligatoire exact :
    <code>
    final_answer("Votre réponse ici")
    </code>
+   
+12. FUSION ET SÉPARATION :
+   - Ces actions se font exclusivement sur les PDF. Si l'utilisateur fournit un autre format (Word, PPT), tu DOIS d'abord le convertir en PDF avec 'convertisseur_editable_vers_pdf'.
+   - Si l'outil de fusion/séparation renvoie une instruction d'erreur (commençant par INSTRUCTION AGENT), tu dois formuler ton 'final_answer' de manière très polie en expliquant exactement à l'utilisateur ce qu'il a oublié ou ce qui bloque.
 """
 agent.prompt_templates["system_prompt"] = consigne + agent.prompt_templates["system_prompt"]
 
@@ -156,10 +166,13 @@ app.add_middleware(
 # Dictionnaire global en mémoire : { "job_id": { "status": "en_cours"|"termine"|"erreur", ... } }
 taches_en_cours: Dict[str, Dict[str, Any]] = {}
 
+class AttachedFile(BaseModel):
+    file_name: str
+    file_base64: str
+
 class ChatRequest(BaseModel):
     prompt: str
-    file_name: Optional[str] = None
-    file_base64: Optional[str] = None
+    fichiers: Optional[List[AttachedFile]] = None
 
 class TicketResponse(BaseModel):
     ticket_id: str
@@ -180,7 +193,7 @@ class VisageSyncRequest(BaseModel):
     nom_personne: str
 
 # --- FONCTION DE TRAVAIL EN ARRIÈRE-PLAN ---
-def executer_travail_ia_background(ticket_id: str, prompt: str, file_name: Optional[str], file_base64: Optional[str]):
+def executer_travail_ia_background(ticket_id: str, prompt: str, fichiers: Optional[List[AttachedFile]] = None):
     """
     Exécute l'agent IA en tâche de fond pour ne jamais bloquer la requête HTTP de Hugging Face au-delà de 60 secondes.
     """
@@ -188,19 +201,26 @@ def executer_travail_ia_background(ticket_id: str, prompt: str, file_name: Optio
     os.makedirs(work_dir, exist_ok=True)
     
     try:
-        input_path = None
-        if file_base64 and file_name:
-            input_path = os.path.join(work_dir, file_name)
-            
-            # 👉 CORRECTION 2 : Nettoyage du préfixe HTML qui corrompt le JPEG
-            b64_data = file_base64
-            if "," in b64_data:
-                b64_data = b64_data.split(",", 1)[1]
+        input_paths = []
+        noms_fichiers = []
+        
+        if fichiers and len(fichiers) > 0:
+            for f_data in fichiers:
+                fname = f_data.file_name
+                fbase64 = f_data.file_base64
                 
-            with open(input_path, "wb") as f:
-                f.write(base64.b64decode(b64_data))
+                fpath = os.path.join(work_dir, fname)
                 
-            initialiser_rag([input_path], embeddings)
+                if "," in fbase64:
+                    fbase64 = fbase64.split(",", 1)[1]
+                    
+                with open(fpath, "wb") as file_out:
+                    file_out.write(base64.b64decode(fbase64))
+                    
+                input_paths.append(fpath)
+                noms_fichiers.append(fname)
+                
+            initialiser_rag(input_paths, embeddings)
         else:
             vider_memoire_rag()
             
@@ -209,10 +229,10 @@ def executer_travail_ia_background(ticket_id: str, prompt: str, file_name: Optio
             f"Tu DOIS OBLIGATOIREMENT préfixer tous les noms de fichiers que tu crées, modifies ou lis avec ce chemin exact.\n"
         )
         
-        if input_path:
+        if len(noms_fichiers) > 0:
             instruction += (
-                f"\n⚠️ INFORMATION IMPORTANTE : L'utilisateur a joint un fichier nommé '{file_name}'. "
-                f"Son chemin d'accès complet est '{input_path}'. Utilise tes outils sur ce fichier si la demande le nécessite.\n"
+                f"\n⚠️ INFORMATION IMPORTANTE : L'utilisateur a joint {len(noms_fichiers)} fichier(s) : {', '.join(noms_fichiers)}. "
+                f"Ils sont situés dans ton espace de travail. Utilise tes outils sur ces fichiers si la demande le nécessite.\n"
             )
 
         instruction += f"\nDemande de l'utilisateur : {prompt}"
@@ -243,7 +263,7 @@ def executer_travail_ia_background(ticket_id: str, prompt: str, file_name: Optio
         files = os.listdir(work_dir)
         generated_files = [
             f for f in files 
-            if f != file_name 
+            if f not in noms_fichiers  # 👈 Exclure tous les fichiers d'origine de la réponse
             and os.path.isfile(os.path.join(work_dir, f))  # 👈 Empêche l'erreur IsADirectoryError !
             and not f.startswith(".")                      # 👈 Ignore les dossiers/fichiers Git (.gitignore, .git...)
         ]
@@ -381,8 +401,7 @@ async def process_request_async(request: ChatRequest, background_tasks: Backgrou
         executer_travail_ia_background,
         ticket_id=ticket_id,
         prompt=request.prompt,
-        file_name=request.file_name,
-        file_base64=request.file_base64
+        fichiers=request.fichiers 
     )
     
     return TicketResponse(

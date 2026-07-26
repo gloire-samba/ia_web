@@ -130,3 +130,64 @@ def outil_analyser_video(chemin_video: str, consigne_specifique: str = "Fais un 
 
     except Exception as e:
         return f"Erreur lors de l'analyse vidéo : {e}"
+    
+@tool
+def outil_analyser_audio(chemin_audio: str, consigne_specifique: str = "Fais un résumé détaillé de cet audio.") -> str:
+    """
+    Analyse un fichier audio (MP3, WAV, M4A, OGG) pour en extraire les paroles, les dialogues et faire un résumé.
+    Utilise cet outil lorsque l'utilisateur demande de résumer, transcrire ou analyser un fichier audio.
+    
+    Args:
+        chemin_audio: Le chemin absolu vers le fichier audio.
+        consigne_specifique: La demande spécifique de l'utilisateur concernant l'audio.
+    """
+    if not os.path.exists(chemin_audio):
+        return "Erreur : Le fichier audio est introuvable."
+
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        return "Erreur : Clé API Google manquante."
+
+    try:
+        client = genai.Client(api_key=api_key)
+        
+        print("🎧 Envoi du fichier audio en cours d'analyse...")
+        
+        # Sécurité anti-crash pour les accents (identique à la vidéo)
+        dossier = os.path.dirname(chemin_audio)
+        extension = os.path.splitext(chemin_audio)[1]
+        chemin_temporaire_ascii = os.path.join(dossier, f"upload_temporaire_audio{extension}")
+        
+        shutil.copy2(chemin_audio, chemin_temporaire_ascii)
+        audio_file = client.files.upload(file=chemin_temporaire_ascii)
+        os.remove(chemin_temporaire_ascii)
+        
+        # Attente du traitement Google
+        while audio_file.state.name == "PROCESSING":
+            print("⏳ L'IA écoute l'audio...")
+            time.sleep(3)
+            audio_file = client.files.get(name=audio_file.name)
+            
+        if audio_file.state.name == "FAILED":
+            return "Erreur : L'IA n'a pas pu traiter ce fichier audio."
+
+        prompt_systeme = (
+            "Tu es un expert en analyse vocale et audio. Écoute cet enregistrement avec attention. "
+            "Réponds STRICTEMENT en respectant ces règles :\n"
+            "1. Réponds toujours en français.\n"
+            "2. Si l'utilisateur demande une transcription, écris précisément les dialogues.\n"
+            "3. Si l'utilisateur demande un résumé, synthétise les points clés de la conversation.\n"
+            "4. Ignore les bruits de fond inutiles.\n\n"
+            f"Demande de l'utilisateur : {consigne_specifique}"
+        )
+
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[audio_file, prompt_systeme]
+        )
+        
+        client.files.delete(name=audio_file.name)
+        return f"Voici l'analyse audio :\n{response.text}"
+
+    except Exception as e:
+        return f"Erreur lors de l'analyse audio : {e}"

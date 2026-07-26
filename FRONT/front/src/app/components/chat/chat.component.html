@@ -27,12 +27,16 @@
   </div>
 
   <div class="input-area">
-    @if (selectedFile) {
-      <div class="selected-file-badge">
-        📎 {{ selectedFile.name }}
-        <button (click)="removeFile()">❌</button>
-      </div>
-    }
+    
+    <!-- 👉 NOUVEAU : Conteneur flexible pour plusieurs badges -->
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+      @for (file of selectedFiles; track $index) {
+        <div class="selected-file-badge" style="margin-bottom: 0;">
+          📎 {{ file.name }}
+          <button (click)="removeFile($index)">❌</button>
+        </div>
+      }
+    </div>
 
     <div class="controls">
       <button class="btn-mic" [class.recording]="isRecording" (click)="toggleRecording()" [disabled]="isLoading" title="Cliquez pour parler">
