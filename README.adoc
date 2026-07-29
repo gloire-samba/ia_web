@@ -9,7 +9,7 @@ toc::[]
 
 🎥 **Voir la démonstration vidéo (2 min) :** link:https://youtu.be/nESt4XXKj5A[Cliquez ici pour voir l'architecture en action sur YouTube]
 
-Cette clé permet au microservice IA d'utiliser Gemini 2.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, analyser des fichiers vidéos (audio et image), et exécuter des tâches DevOps (tests et déploiement).
+Cette architecture met en scène un microservice IA complet propulsé par Gemini 2.5 Flash, capable d'analyser vos requêtes (textuelles ou vocales via microphone), de lire, créer, fusionner, séparer ou compresser vos documents, d'analyser des médias complexes (vidéos, audios), de reconnaître des visages, d'interroger le Web via Tavily, et d'exécuter des tâches DevOps (tests et déploiement automatiques).
 L'architecture est pensée pour être modulaire et démonstrative. Elle sépare distinctement les interfaces utilisateurs (deux clones parfaits en Angular et React), les serveurs relais (avec deux implémentations possibles pour prouver l'interopérabilité), et le cerveau analytique IA hébergé dans le Cloud.
 
 == Prérequis
@@ -76,13 +76,13 @@ Le projet est divisé en 5 modules indépendants orchestrés par Docker.
 * ⚛️ link:FRONTREACT/README.adoc[**FRONTREACT (React)**] : L'interface graphique de chat alternative, développée avec Vite sur le port 5173 (intègre également la communication par texte et par microphone).
 * ☕ link:BackSpring/README.adoc[**BackSpring (Java / Spring Boot)**] : Le premier serveur relais (Port 8080).
 * 🎸 link:BackDjango/README.adoc[**BackDjango (Python / Django)**] : Le second serveur relais (Port 8000).
-* 🧠 link:IA/README.adoc[**IA (Python / FastAPI)**] : Le code du cerveau IA, destiné à être hébergé sur Hugging Face. Il intègre désormais la transcription audio du micro et de puissants outils DevOps (tests unitaires et déploiement Git).
+* 🧠 link:IA/README.adoc[**IA (Python / FastAPI)**] : Le code du cerveau IA, destiné à être hébergé sur Hugging Face. Il intègre la transcription audio, la manipulation/compression avancée de documents et médias, la recherche web avec Tavily, la reconnaissance faciale, et de puissants outils DevOps (tests unitaires et déploiement Git).
 * 🐳 **`docker-compose.yml`** : Le chef d'orchestre. Ce fichier permet de démarrer les deux interfaces et les deux relais simultanément dans des conteneurs isolés avec une seule commande.
 
 == 🔑 Tutoriel : Obtenir vos Clés et Configurer les Services externes
 
 === Étape 1 : Obtenir la clé Google Gemini (Pour l'IA)
-Cette clé permet au microservice IA d'utiliser Gemini 2.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire vos documents, et analyser des fichiers vidéos (audio et image).
+Cette clé permet au microservice IA d'utiliser Gemini 2.5 Flash pour analyser vos requêtes (textuelles ou vocales via microphone), lire, fusionner et compresser vos documents, ainsi qu'analyser des fichiers multimédias complexes (audio et vidéo).
 1. Allez sur https://aistudio.google.com/[Google AI Studio].
 2. Connectez-vous avec un compte Google.
 3. Cliquez sur **"Get API key"** à gauche, puis sur le bouton bleu **"Create API key"**.
@@ -96,10 +96,9 @@ L'IA de notre application ne tourne pas sur votre machine, mais dans le cloud.
 4. Cliquez sur **"Create Space"**.
 5. Allez dans l'onglet **"Settings"** de votre Space, puis dans **"Variables and secrets"**.
 6. Dans la section **"Secrets"**, ajoutez les variables suivantes :
-   * Name : `GOOGLE_API_KEY`
-   * Value : _La clé obtenue à l'Étape 1_.
-   * Name : `HF_TOKEN`
-   * Value : _Votre jeton d'accès Hugging Face (disponible dans votre profil HF, nécessaire pour générer les images manga)_.
+   * Name : `GOOGLE_API_KEY` -> Value : _La clé obtenue à l'Étape 1_.
+   * Name : `HF_TOKEN` -> Value : _Votre jeton d'accès Hugging Face (nécessaire pour générer les images manga)_.
+   * Name : `TAVILY_API_KEY` -> Value : _Votre clé d'API Tavily pour la recherche Web_.
 7. Allez dans l'onglet **"Files"** de votre Space, et uploadez le fichier `main.py`, le fichier `requirements.txt`, le `Dockerfile` **ainsi que tous les fichiers Python commençant par `outils_`** de votre dossier IA.
 8. Le Space va démarrer ("Building" puis "Running"). **Copiez l'URL de votre Space** et mettez-la à jour dans les fichiers `IaClientService.java` (Spring) et `services.py` (Django) pour que vos backends pointent vers ce nouveau cerveau.
 
